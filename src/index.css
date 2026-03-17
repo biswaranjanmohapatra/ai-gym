@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 6%;
+    --foreground: 0 0% 95%;
+
+    --card: 220 18% 10%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 220 18% 10%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 142 72% 50%;
+    --primary-foreground: 220 20% 6%;
+
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 220 15% 14%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 174 72% 50%;
+    --accent-foreground: 220 20% 6%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 142 72% 50%;
+
+    --radius: 0.75rem;
+
+    --neon-green: 142 72% 50%;
+    --neon-cyan: 174 72% 50%;
+    --neon-glow: 0 0 20px hsl(142 72% 50% / 0.4);
+    --cyan-glow: 0 0 20px hsl(174 72% 50% / 0.4);
+
+    --gold: 45 100% 50%;
+    --gold-light: 45 100% 65%;
+    --gold-dark: 38 90% 40%;
+    --gold-glow: 0 0 25px hsl(45 100% 50% / 0.3);
+
+    --glass-bg: 220 18% 10% / 0.6;
+    --glass-border: 220 15% 25% / 0.3;
+
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    --sidebar-background: 220 18% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 142 72% 50%;
+    --sidebar-primary-foreground: 220 20% 6%;
+    --sidebar-accent: 220 15% 14%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 142 72% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: 0.05em;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-xl border border-border/30 rounded-xl;
+  }
+  .neon-text {
+    @apply text-primary;
+    text-shadow: var(--neon-glow);
+  }
+  .cyan-text {
+    @apply text-accent;
+    text-shadow: var(--cyan-glow);
+  }
+  .neon-border {
+    @apply border-primary/40;
+    box-shadow: var(--neon-glow);
+  }
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary to-accent;
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+  .gradient-gold {
+    background: linear-gradient(135deg, hsl(45 100% 50%), hsl(38 90% 40%), hsl(45 100% 65%));
+  }
+  .gradient-gold-text {
+    background: linear-gradient(135deg, hsl(45 100% 65%), hsl(38 90% 50%), hsl(45 100% 55%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gold-glow {
+    box-shadow: 0 0 20px hsl(45 100% 50% / 0.25), 0 0 40px hsl(45 100% 50% / 0.1);
+  }
+  .gold-border {
+    border-color: hsl(45 100% 50% / 0.4);
+  }
+  .premium-card {
+    @apply glass-card;
+    background: linear-gradient(135deg, hsl(220 18% 10% / 0.8), hsl(45 20% 12% / 0.6));
+    border-color: hsl(45 100% 50% / 0.3);
+    box-shadow: 0 0 30px hsl(45 100% 50% / 0.08), inset 0 1px 0 hsl(45 100% 50% / 0.1);
+  }
+  .hero-overlay {
+    background: linear-gradient(180deg, hsl(220 20% 6% / 0.3) 0%, hsl(220 20% 6% / 0.7) 50%, hsl(220 20% 6% / 0.95) 100%);
+  }
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-pulse-neon {
+    animation: pulseNeon 2s ease-in-out infinite;
+  }
+  .animate-pulse-gold {
+    animation: pulseGold 2s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes pulseNeon {
+  0%, 100% { box-shadow: 0 0 5px hsl(142 72% 50% / 0.4), 0 0 10px hsl(142 72% 50% / 0.2); }
+  50% { box-shadow: 0 0 15px hsl(142 72% 50% / 0.6), 0 0 30px hsl(142 72% 50% / 0.3); }
+}
+
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 8px hsl(45 100% 50% / 0.3), 0 0 16px hsl(45 100% 50% / 0.15); }
+  50% { box-shadow: 0 0 20px hsl(45 100% 50% / 0.5), 0 0 40px hsl(45 100% 50% / 0.2); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
+}
