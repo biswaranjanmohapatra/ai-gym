@@ -5,6 +5,7 @@ import { Dumbbell, Mail, Lock, ArrowRight, Loader2, User, Eye, EyeOff, Award } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function TrainerAuthPage() {
@@ -39,8 +40,17 @@ export default function TrainerAuthPage() {
         toast.success('Welcome back, Coach!');
         navigate('/trainer-dashboard');
       } else {
-        await signUp(email, password, 'trainer');
-        localStorage.setItem(`pending_trainer_${email}`, JSON.stringify({ name, specialty, experience }));
+        const userId = await signUp(email, password, 'trainer');
+        if (userId) {
+          await supabase.from('trainer_profiles').insert({
+            user_id: userId,
+            name,
+            specialty,
+            experience,
+            price_per_session: 500,
+            is_active: true,
+          } as any);
+        }
         toast.success('Please verify your email before logging in.');
       }
     } catch (err: any) {

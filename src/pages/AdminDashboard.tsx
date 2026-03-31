@@ -33,6 +33,9 @@ export default function AdminDashboard() {
   const [userStats, setUserStats] = useState<UserStats>({ totalUsers: 0, totalTrainers: 0, totalAdmins: 0, activeUsers: 0 });
   const [bookingStats, setBookingStats] = useState<BookingStats>({ totalBookings: 0, activeBookings: 0, completedBookings: 0, cancelledBookings: 0 });
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [allTrainers, setAllTrainers] = useState<any[]>([]);
+  const [allBookings, setAllBookings] = useState<any[]>([]);
+  const [allPayments, setAllPayments] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'bookings' | 'settings'>('overview');
   const [loading, setLoading] = useState(true);
 
@@ -40,8 +43,40 @@ export default function AdminDashboard() {
     if (user) {
       fetchStats();
       fetchRecentUsers();
+      fetchAdminData();
     }
   }, [user]);
+
+  const fetchAdminData = async () => {
+    const [{ data: trainers }, { data: bookings }, { data: payments }] = await Promise.all([
+      supabase.from('trainer_profiles').select('*').order('created_at', { ascending: false }),
+      supabase.from('trainer_bookings').select('*').order('booking_date', { ascending: false }),
+      supabase.from('payments' as any).select('*').order('date', { ascending: false }),
+    ]);
+    setAllTrainers(trainers || []);
+    setAllBookings(bookings || []);
+    setAllPayments(payments || []);
+  };
+
+  const deleteUser = async (userId: string) => {
+    const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
+    if (error) {
+      toast.error('Failed to delete user');
+      return;
+    }
+    toast.success('User removed');
+    fetchRecentUsers();
+  };
+
+  const deleteTrainer = async (trainerId: string) => {
+    const { error } = await supabase.from('trainer_profiles').delete().eq('id', trainerId);
+    if (error) {
+      toast.error('Failed to delete trainer');
+      return;
+    }
+    toast.success('Trainer removed');
+    fetchAdminData();
+  };
 
   const fetchStats = async () => {
     try {
@@ -81,8 +116,7 @@ export default function AdminDashboard() {
       // Fetch recent user roles
       const { data: roles } = await supabase
         .from('user_roles')
-        .select('user_id, role, created_at')
-        .order('created_at', { ascending: false })
+        .select('user_id, role')
         .limit(10);
       
       if (roles) {
@@ -100,7 +134,7 @@ export default function AdminDashboard() {
             user_id: role.user_id,
             name: profile?.name || 'No name',
             role: role.role,
-            created_at: profile?.created_at || role.created_at,
+            created_at: profile?.created_at || new Date().toISOString(),
           };
         });
         setRecentUsers(usersWithRoles);
@@ -243,8 +277,27 @@ export default function AdminDashboard() {
                     }`}>
                       {profile.role || 'user'}
                     </span>
+                    <div className="mt-2">
+                      <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => deleteUser(profile.user_id)}>
+                        Delete User
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
+              ))}
+            </div>
+            <h3 className="font-display text-xl text-foreground mt-8 mb-4">Manage Trainers</h3>
+            <div className="space-y-3">
+              {allTrainers.map((trainer: any) => (
+                <div key={trainer.id} className="flex items-center justify-between p-4 rounded-lg bg-secondary/40">
+                  <div>
+                    <p className="text-foreground font-medium">{trainer.name}</p>
+                    <p className="text-xs text-muted-foreground">{trainer.specialty} • ₹{trainer.price_per_session || 0}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => deleteTrainer(trainer.id)}>
+                    Delete Trainer
+                  </Button>
+                </div>
               ))}
             </div>
           </motion.div>
@@ -270,7 +323,36 @@ export default function AdminDashboard() {
                 <p className="font-display text-2xl text-primary">{bookingStats.completedBookings}</p>
               </div>
             </div>
-            <p className="text-muted-foreground text-center py-8">Booking management features coming soon...</p>
+            <div className="space-y-3 mb-8">
+              {allBookings.slice(0, 25).map((booking: any) => (
+                <div key={booking.id} className="p-3 rounded-lg bg-secondary/40 flex justify-between">
+                  <div>
+                    <p className="text-sm text-foreground">User: {booking.user_id}</p>
+                    <p className="text-xs text-muted-foreground">Trainer: {booking.trainer_id}</p>
+                    <p className="text-xs text-muted-foreground">{booking.booking_date} • {booking.start_time}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-primary font-medium">₹{booking.payment_amount || 0}</p>
+                    <p className="text-[10px] text-muted-foreground">{booking.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <h3 className="font-display text-xl text-foreground mb-4">All Payments</h3>
+            <div className="space-y-2">
+              {allPayments.slice(0, 25).map((payment: any) => (
+                <div key={payment.id} className="p-3 rounded-lg bg-secondary/40 flex justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">User: {payment.user_id}</p>
+                    <p className="text-xs text-muted-foreground">Trainer: {payment.trainer_id || '-'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-primary font-medium">₹{payment.amount}</p>
+                    <p className="text-[10px] text-muted-foreground">{payment.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </motion.div>
         )}
 

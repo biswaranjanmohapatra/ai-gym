@@ -46,9 +46,11 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (isLogin) {
-        await signIn(email, password);
+        const role = await signIn(email, password);
         toast.success('Welcome back!');
-        navigate('/dashboard');
+        if (role === 'trainer') navigate('/trainer-dashboard');
+        else if (role === 'admin') navigate('/admin-dashboard');
+        else navigate('/dashboard');
       } else {
         await signUp(email, password, 'user');
         localStorage.setItem(`avatar_pending_${email}`, selectedAvatar);

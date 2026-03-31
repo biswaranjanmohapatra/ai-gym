@@ -93,7 +93,7 @@ export default function WorkoutsPage() {
   const [customExercises, setCustomExercises] = useState<Record<string, Exercise[]>>({});
 
   const logWorkout = async (workout: typeof workoutPlans.beginner[0]) => {
-    if (!user) { toast.error('Please sign in to log workouts'); navigate('/auth'); return; }
+    if (!user) { toast.error('Please sign in to log workouts'); navigate('/user-login'); return; }
     
     // Log workout
     const { error } = await supabase.from('workout_logs').insert({

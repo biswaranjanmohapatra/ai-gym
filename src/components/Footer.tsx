@@ -14,7 +14,7 @@ export default function Footer() {
             <Link to="/" className="hover:text-primary transition-colors">Home</Link>
             <Link to="/workouts" className="hover:text-primary transition-colors">Workouts</Link>
             <Link to="/diet" className="hover:text-primary transition-colors">Diet</Link>
-            <Link to="/auth" className="hover:text-primary transition-colors">Sign In</Link>
+            <Link to="/user-login" className="hover:text-primary transition-colors">Sign In</Link>
           </div>
           <p className="text-sm text-muted-foreground">© 2026 IronForge. All rights reserved.</p>
         </div>

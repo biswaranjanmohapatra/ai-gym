@@ -69,7 +69,7 @@ export default function DietPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="font-display text-5xl text-foreground mb-4">Diet & Nutrition</h1>
             <p className="text-muted-foreground mb-8">Sign in to access personalized diet tracking and AI meal plans.</p>
-            <Button onClick={() => navigate('/auth')} className="bg-primary text-primary-foreground">
+            <Button onClick={() => navigate('/user-login')} className="bg-primary text-primary-foreground">
               Sign In to Get Started
             </Button>
           </motion.div>

@@ -57,7 +57,7 @@ export default function RewardsPage() {
         <div className="container mx-auto px-4 pt-24 pb-12 text-center">
           <h1 className="font-display text-5xl text-foreground mb-4">Rewards Store</h1>
           <p className="text-muted-foreground mb-8">Sign in to earn and redeem fitness points.</p>
-          <Button onClick={() => navigate('/auth')} className="bg-primary text-primary-foreground">Sign In</Button>
+          <Button onClick={() => navigate('/user-login')} className="bg-primary text-primary-foreground">Sign In</Button>
         </div>
         <Footer />
       </div>

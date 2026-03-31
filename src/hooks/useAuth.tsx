@@ -12,8 +12,8 @@ interface AuthContextType {
   user: AuthUser | null;
   role: AppRole | null;
   loading: boolean;
-  signUp: (email: string, password: string, role: AppRole) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, role: AppRole) => Promise<string | null>;
+  signIn: (email: string, password: string) => Promise<AppRole | null>;
   signOut: () => Promise<void>;
 }
 
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw error;
     const authUser = data.user;
-    if (!authUser) return;
+    if (!authUser) return null;
 
     await supabase.from('user_roles').insert({
       user_id: authUser.id,
@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Do not auto-sign-in; require email verification first
     setUser(null);
     setRole(null);
+    return authUser.id;
   };
 
   const signIn = async (email: string, password: string) => {
@@ -86,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw error;
     const authUser = data.user;
-    if (!authUser) return;
+    if (!authUser) return null;
 
     // Enforce email verification
     if (!authUser.email_confirmed_at) {
@@ -103,7 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .limit(1)
       .maybeSingle();
 
-    setRole((roleRow?.role as AppRole) ?? null);
+    const resolvedRole = (roleRow?.role as AppRole) ?? null;
+    setRole(resolvedRole);
+    return resolvedRole;
   };
 
   const signOut = async () => {

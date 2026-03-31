@@ -108,7 +108,7 @@ export default function HeroSection() {
             transition={{ delay: 1, duration: 0.6 }}
             className="flex flex-col sm:flex-row gap-4 justify-center mb-20"
           >
-            <Link to="/auth?mode=signup">
+            <Link to="/user-login?mode=signup">
               <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_30px_hsl(142_72%_50%/0.4)] text-lg px-8 py-6 font-semibold transition-all duration-300">
                 Start Free Trial <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

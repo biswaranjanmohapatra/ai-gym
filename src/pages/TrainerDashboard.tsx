@@ -40,6 +40,7 @@ export default function TrainerDashboard() {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'schedule' | 'earnings'>('overview');
   const [newSlot, setNewSlot] = useState({ day: 1, start: '09:00', end: '10:00' });
+  const [sessionPrice, setSessionPrice] = useState<number>(500);
 
   useEffect(() => {
     if (user) fetchTrainerProfile();
@@ -49,6 +50,7 @@ export default function TrainerDashboard() {
     const { data: tp } = await supabase.from('trainer_profiles').select('*').eq('user_id', user!.id).single();
     if (tp) {
       setTrainerProfile(tp);
+      setSessionPrice(tp.price_per_session || 500);
       const { data: bk } = await supabase.from('trainer_bookings').select('*').eq('trainer_id', tp.id).order('booking_date', { ascending: false });
       if (bk) setBookings(bk);
       const { data: ts } = await supabase.from('trainer_time_slots').select('*').eq('trainer_id', tp.id).order('day_of_week');
@@ -71,6 +73,20 @@ export default function TrainerDashboard() {
   const removeTimeSlot = async (id: string) => {
     await supabase.from('trainer_time_slots').delete().eq('id', id);
     toast.success('Slot removed');
+    fetchTrainerProfile();
+  };
+
+  const updateSessionPrice = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('trainer_profiles')
+      .update({ price_per_session: sessionPrice } as any)
+      .eq('user_id', user.id);
+    if (error) {
+      toast.error('Failed to update session price');
+      return;
+    }
+    toast.success('Session price updated');
     fetchTrainerProfile();
   };
 
@@ -184,6 +200,15 @@ export default function TrainerDashboard() {
                 <span key={c} className="text-xs px-2 py-1 rounded-full border"
                   style={{ borderColor: 'hsl(45 100% 50% / 0.2)', color: 'hsl(45 100% 55%)', background: 'hsl(45 100% 50% / 0.05)' }}>{c}</span>
               ))}
+            </div>
+            <div className="mt-5 flex items-center gap-3">
+              <Input
+                type="number"
+                value={sessionPrice}
+                onChange={e => setSessionPrice(Number(e.target.value))}
+                className="max-w-[180px] bg-secondary border-border/50"
+              />
+              <Button onClick={updateSessionPrice}>Set Price</Button>
             </div>
           </motion.div>
         )}

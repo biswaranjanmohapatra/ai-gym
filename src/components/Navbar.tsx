@@ -32,18 +32,18 @@ export default function Navbar() {
         ]
       : role === 'trainer'
       ? [
+          { label: 'Home', href: '/' },
           { label: 'Trainer Dashboard', href: '/trainer-dashboard' },
-          { label: 'Bookings', href: '/trainer-dashboard?tab=bookings' },
-          { label: 'Payments', href: '/trainer-dashboard?tab=earnings' },
-          { label: 'Available Slots', href: '/trainer-dashboard?tab=schedule' },
-          { label: 'Profile', href: '/trainer-dashboard' },
+          { label: 'Booking Requests', href: '/trainer-dashboard?tab=bookings' },
+          { label: 'My Earnings', href: '/trainer-dashboard?tab=earnings' },
+          { label: 'Profile (Set Price)', href: '/trainer-dashboard' },
         ]
       : [
           { label: 'Admin Dashboard', href: '/admin-dashboard' },
-          { label: 'Users', href: '/admin-dashboard?tab=users' },
-          { label: 'Trainers', href: '/admin-dashboard?tab=trainers' },
-          { label: 'Bookings', href: '/admin-dashboard?tab=bookings' },
-          { label: 'Payments', href: '/admin-dashboard?tab=payments' },
+          { label: 'Manage Users', href: '/admin-dashboard?tab=users' },
+          { label: 'Manage Trainers', href: '/admin-dashboard?tab=trainers' },
+          { label: 'All Bookings', href: '/admin-dashboard?tab=bookings' },
+          { label: 'All Payments', href: '/admin-dashboard?tab=payments' },
           { label: 'Subscriptions', href: '/admin-dashboard?tab=subscriptions' },
           { label: 'Analytics', href: '/admin-dashboard?tab=analytics' },
         ];
