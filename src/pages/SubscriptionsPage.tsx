@@ -60,12 +60,12 @@ export default function SubscriptionsPage() {
 
     if (paymentError) {
       toast.error("Subscription saved but payment entry failed.");
-      navigate("/payment-history");
+      navigate("/subscription-history");
       return;
     }
 
     toast.success("Subscription successful.");
-    navigate("/payment-history");
+    navigate("/subscription-history");
   };
 
   return (

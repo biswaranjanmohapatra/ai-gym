@@ -5,10 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Users, Shield, Settings, BarChart3, UserCheck, Calendar, 
   TrendingUp, Activity, Award, AlertCircle, CheckCircle, XCircle,
-  Database, Lock, Eye, EyeOff
+  Database, Lock, Eye, EyeOff, DollarSign
 } from 'lucide-react';
 
 interface UserStats {
@@ -30,13 +31,15 @@ const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [userStats, setUserStats] = useState<UserStats>({ totalUsers: 0, totalTrainers: 0, totalAdmins: 0, activeUsers: 0 });
   const [bookingStats, setBookingStats] = useState<BookingStats>({ totalBookings: 0, activeBookings: 0, completedBookings: 0, cancelledBookings: 0 });
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [allTrainers, setAllTrainers] = useState<any[]>([]);
   const [allBookings, setAllBookings] = useState<any[]>([]);
   const [allPayments, setAllPayments] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'bookings' | 'settings'>('overview');
+  const [allSubscriptions, setAllSubscriptions] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'trainers' | 'bookings' | 'payments' | 'subscriptions' | 'settings'>('overview');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,15 +50,24 @@ export default function AdminDashboard() {
     }
   }, [user]);
 
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'users' || tab === 'trainers' || tab === 'bookings' || tab === 'payments' || tab === 'subscriptions' || tab === 'settings' || tab === 'overview') {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const fetchAdminData = async () => {
-    const [{ data: trainers }, { data: bookings }, { data: payments }] = await Promise.all([
+    const [{ data: trainers }, { data: bookings }, { data: payments }, { data: subscriptions }] = await Promise.all([
       supabase.from('trainer_profiles').select('*').order('created_at', { ascending: false }),
       supabase.from('trainer_bookings').select('*').order('booking_date', { ascending: false }),
       supabase.from('payments' as any).select('*').order('date', { ascending: false }),
+      supabase.from('subscriptions' as any).select('*').order('created_at', { ascending: false }),
     ]);
     setAllTrainers(trainers || []);
     setAllBookings(bookings || []);
     setAllPayments(payments || []);
+    setAllSubscriptions(subscriptions || []);
   };
 
   const deleteUser = async (userId: string) => {
@@ -147,7 +159,10 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
     { id: 'users' as const, label: 'Users', icon: Users },
+    { id: 'trainers' as const, label: 'Trainers', icon: Award },
     { id: 'bookings' as const, label: 'Bookings', icon: Calendar },
+    { id: 'payments' as const, label: 'Payments', icon: DollarSign },
+    { id: 'subscriptions' as const, label: 'Subscriptions', icon: Database },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];
 
@@ -166,7 +181,7 @@ export default function AdminDashboard() {
         {/* Tabs */}
         <motion.div variants={itemVariants} className="flex gap-2 mb-8 overflow-x-auto pb-2">
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSearchParams({ tab: tab.id }); }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
                 activeTab === tab.id 
                   ? 'bg-primary text-primary-foreground' 
@@ -303,6 +318,28 @@ export default function AdminDashboard() {
           </motion.div>
         )}
 
+        {/* Trainers Tab */}
+        {activeTab === 'trainers' && (
+          <motion.div variants={itemVariants} className="glass-card p-6">
+            <h3 className="font-display text-xl text-foreground mb-4 flex items-center gap-2">
+              <Award className="h-5 w-5 text-primary" /> Manage Trainers
+            </h3>
+            <div className="space-y-3">
+              {allTrainers.map((trainer: any) => (
+                <div key={trainer.id} className="flex items-center justify-between p-4 rounded-lg bg-secondary/40">
+                  <div>
+                    <p className="text-foreground font-medium">{trainer.name}</p>
+                    <p className="text-xs text-muted-foreground">{trainer.specialty} • ₹{trainer.price_per_session || 0}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => deleteTrainer(trainer.id)}>
+                    Delete Trainer
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Bookings Tab */}
         {activeTab === 'bookings' && (
           <motion.div variants={itemVariants} className="glass-card p-6">
@@ -349,6 +386,50 @@ export default function AdminDashboard() {
                   <div className="text-right">
                     <p className="text-primary font-medium">₹{payment.amount}</p>
                     <p className="text-[10px] text-muted-foreground">{payment.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Payments Tab */}
+        {activeTab === 'payments' && (
+          <motion.div variants={itemVariants} className="glass-card p-6">
+            <h3 className="font-display text-xl text-foreground mb-4">All Payments</h3>
+            <div className="space-y-2">
+              {allPayments.map((payment: any) => (
+                <div key={payment.id} className="p-3 rounded-lg bg-secondary/40 flex justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">User: {payment.user_id}</p>
+                    <p className="text-xs text-muted-foreground">Trainer: {payment.trainer_id || '-'}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(payment.date).toLocaleDateString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-primary font-medium">₹{payment.amount}</p>
+                    <p className="text-[10px] text-muted-foreground">{payment.type || 'trainer'} • {payment.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Subscriptions Tab */}
+        {activeTab === 'subscriptions' && (
+          <motion.div variants={itemVariants} className="glass-card p-6">
+            <h3 className="font-display text-xl text-foreground mb-4">All Subscriptions</h3>
+            <div className="space-y-2">
+              {allSubscriptions.map((sub: any) => (
+                <div key={sub.id} className="p-3 rounded-lg bg-secondary/40 flex justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">User: {sub.user_id}</p>
+                    <p className="text-xs text-muted-foreground">Plan: {sub.plan}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(sub.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-primary font-medium">₹{sub.price}</p>
+                    <p className="text-[10px] text-muted-foreground">{sub.status}</p>
                   </div>
                 </div>
               ))}

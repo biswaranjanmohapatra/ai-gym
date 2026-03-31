@@ -15,23 +15,39 @@ interface Payment {
 }
 
 export default function PaymentHistory() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
     async function loadPayments() {
       if (!user) return;
-      const { data } = await supabase
+      let query = supabase
         .from("payments" as any)
         .select("*")
-        .eq("user_id", user.id)
         .order("date", { ascending: false });
+
+      if (role === "user") {
+        query = query.eq("user_id", user.id);
+      } else if (role === "trainer") {
+        const { data: trainer } = await supabase
+          .from("trainer_profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!trainer?.id) {
+          setPayments([]);
+          return;
+        }
+        query = query.eq("trainer_id", trainer.id);
+      }
+
+      const { data } = await query;
 
       setPayments((data as Payment[]) || []);
     }
 
     loadPayments();
-  }, [user]);
+  }, [user, role]);
 
   return (
     <div className="min-h-screen bg-background">

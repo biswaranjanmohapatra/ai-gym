@@ -13,6 +13,7 @@ import TrainerDashboard from "./pages/TrainerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import PaymentHistory from "./pages/PaymentHistory";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
+import SubscriptionHistoryPage from "./pages/SubscriptionHistoryPage";
 import BookingHistoryPage from "./pages/BookingHistoryPage";
 import WorkoutsPage from "./pages/WorkoutsPage";
 import DietPage from "./pages/DietPage";
@@ -62,9 +63,10 @@ const App = () => (
             <Route path="/trainers" element={<ProtectedRoute allowedRoles={["user"]}><TrainersPage /></ProtectedRoute>} />
             <Route path="/rewards" element={<ProtectedRoute allowedRoles={["user"]}><RewardsPage /></ProtectedRoute>} />
             <Route path="/subscriptions" element={<ProtectedRoute allowedRoles={["user"]}><SubscriptionsPage /></ProtectedRoute>} />
+            <Route path="/subscription-history" element={<ProtectedRoute allowedRoles={["user"]}><SubscriptionHistoryPage /></ProtectedRoute>} />
             <Route path="/payment-history" element={<ProtectedRoute allowedRoles={["user", "trainer", "admin"]}><PaymentHistory /></ProtectedRoute>} />
             <Route path="/booking-history" element={<ProtectedRoute allowedRoles={["user"]}><BookingHistoryPage /></ProtectedRoute>} />
-            <Route path="/community" element={<CommunityPage />} />
+            <Route path="/community" element={<ProtectedRoute allowedRoles={["user"]}><CommunityPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

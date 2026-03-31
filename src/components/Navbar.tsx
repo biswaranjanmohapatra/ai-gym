@@ -25,6 +25,7 @@ export default function Navbar() {
                 { label: 'Dashboard', href: '/dashboard' },
                 { label: 'Rewards', href: '/rewards' },
                 { label: 'Subscriptions', href: '/subscriptions' },
+                { label: 'Subscription History', href: '/subscription-history' },
                 { label: 'Booking History', href: '/booking-history' },
                 { label: 'Payment History', href: '/payment-history' },
               ]
@@ -32,7 +33,6 @@ export default function Navbar() {
         ]
       : role === 'trainer'
       ? [
-          { label: 'Home', href: '/' },
           { label: 'Trainer Dashboard', href: '/trainer-dashboard' },
           { label: 'Booking Requests', href: '/trainer-dashboard?tab=bookings' },
           { label: 'My Earnings', href: '/trainer-dashboard?tab=earnings' },
@@ -44,8 +44,6 @@ export default function Navbar() {
           { label: 'Manage Trainers', href: '/admin-dashboard?tab=trainers' },
           { label: 'All Bookings', href: '/admin-dashboard?tab=bookings' },
           { label: 'All Payments', href: '/admin-dashboard?tab=payments' },
-          { label: 'Subscriptions', href: '/admin-dashboard?tab=subscriptions' },
-          { label: 'Analytics', href: '/admin-dashboard?tab=analytics' },
         ];
 
   return (
