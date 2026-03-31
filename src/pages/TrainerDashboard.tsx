@@ -36,6 +36,7 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 export default function TrainerDashboard() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [trainerProfile, setTrainerProfile] = useState<any>(null);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'schedule' | 'earnings'>('overview');
@@ -53,6 +54,8 @@ export default function TrainerDashboard() {
       setSessionPrice(tp.price_per_session || 500);
       const { data: bk } = await supabase.from('trainer_bookings').select('*').eq('trainer_id', tp.id).order('booking_date', { ascending: false });
       if (bk) setBookings(bk);
+      const { data: py } = await supabase.from('payments' as any).select('*').eq('trainer_id', tp.id).order('date', { ascending: false });
+      if (py) setPayments(py);
       const { data: ts } = await supabase.from('trainer_time_slots').select('*').eq('trainer_id', tp.id).order('day_of_week');
       if (ts) setTimeSlots(ts);
     }
@@ -92,7 +95,7 @@ export default function TrainerDashboard() {
 
   const activeBookings = bookings.filter(b => b.status === 'active');
   const completedBookings = bookings.filter(b => b.status === 'completed');
-  const totalEarnings = bookings.filter(b => b.payment_status === 'paid').reduce((s, b) => s + (b.payment_amount || 0), 0);
+  const totalEarnings = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const uniqueClients = new Set(bookings.map(b => b.user_id)).size;
 
   const updateBookingStatus = async (booking: Booking, status: 'approved' | 'cancelled') => {
@@ -334,17 +337,17 @@ export default function TrainerDashboard() {
               <h3 className="font-display text-xl text-foreground mb-4 flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-primary" /> Payment History
               </h3>
-              {bookings.filter(b => b.payment_status === 'paid').length > 0 ? (
+              {payments.length > 0 ? (
                 <div className="space-y-2">
-                  {bookings.filter(b => b.payment_status === 'paid').map(b => (
-                    <div key={b.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                  {payments.map(p => (
+                    <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
                       <div>
-                        <p className="text-sm text-foreground">{new Date(b.booking_date).toLocaleDateString()}</p>
-                        <p className="text-xs text-muted-foreground">{b.session_type} session</p>
+                        <p className="text-sm text-foreground">{new Date(p.date).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground">User: {p.user_id}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-primary font-medium">₹{b.payment_amount}</p>
-                        <span className="text-[10px] text-accent">paid</span>
+                        <p className="text-primary font-medium">₹{p.amount}</p>
+                        <span className="text-[10px] text-accent">{p.status}</span>
                       </div>
                     </div>
                   ))}
