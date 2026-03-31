@@ -41,7 +41,7 @@ export default function TrainerAuthPage() {
       } else {
         await signUp(email, password, 'trainer');
         localStorage.setItem(`pending_trainer_${email}`, JSON.stringify({ name, specialty, experience }));
-        toast.success('Trainer account created! You can now sign in.');
+        toast.success('Please verify your email before logging in.');
       }
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong');
@@ -137,10 +137,10 @@ export default function TrainerAuthPage() {
           </p>
 
           <div className="text-center mt-3 space-y-2">
-            <button onClick={() => navigate('/auth')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
+            <button onClick={() => navigate('/user-login')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
               ← Back to User Login
             </button>
-            <button onClick={() => navigate('/admin-auth')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
+            <button onClick={() => navigate('/admin-login')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
               Are you an admin? Login here →
             </button>
           </div>

@@ -7,10 +7,11 @@ import { CreditCard, IndianRupee } from "lucide-react";
 interface Payment {
   id: string;
   user_id: string;
-  trainer_id: string;
+  trainer_id: string | null;
   amount: number;
   date: string;
   status: string;
+  type?: string;
 }
 
 export default function PaymentHistory() {
@@ -52,7 +53,7 @@ export default function PaymentHistory() {
               >
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    Trainer ID: {payment.trainer_id}
+                    Payment Type: {payment.type || "trainer"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Date: {new Date(payment.date).toLocaleDateString()}

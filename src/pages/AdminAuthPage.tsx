@@ -39,7 +39,7 @@ export default function AdminAuthPage() {
       } else {
         await signUp(email, password, 'admin');
         localStorage.setItem(`pending_admin_${email}`, JSON.stringify({ name }));
-        toast.success('Admin account created! You can now sign in.');
+        toast.success('Please verify your email before logging in.');
       }
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong');
@@ -122,10 +122,10 @@ export default function AdminAuthPage() {
           </p>
 
           <div className="text-center mt-3 space-y-2">
-            <button onClick={() => navigate('/auth')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
+            <button onClick={() => navigate('/user-login')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
               ← Back to User Login
             </button>
-            <button onClick={() => navigate('/trainer-auth')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
+            <button onClick={() => navigate('/trainer-login')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
               ← Back to Trainer Login
             </button>
           </div>

@@ -25,6 +25,7 @@ export default function Navbar() {
                 { label: 'Dashboard', href: '/dashboard' },
                 { label: 'Rewards', href: '/rewards' },
                 { label: 'Subscriptions', href: '/subscriptions' },
+                { label: 'Booking History', href: '/booking-history' },
                 { label: 'Payment History', href: '/payment-history' },
               ]
             : []),

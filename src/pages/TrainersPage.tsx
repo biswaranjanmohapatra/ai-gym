@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import CouponSystem from '@/components/trainers/CouponSystem';
 
 interface Trainer {
+  id?: string;
   name: string;
   specialty: string;
   experience: string;
@@ -24,7 +25,7 @@ interface Trainer {
   availability: string[];
 }
 
-const trainers: Trainer[] = [
+const demoTrainers: Trainer[] = [
   { name: 'Rahul', specialty: 'Strength & HIIT', experience: '12 years', rating: 4.9, reviews: 284, price: 799, emoji: '💪',
     bio: 'Certified strength coach with over a decade of experience transforming bodies. Specializes in powerlifting and HIIT circuits.',
     certifications: ['NSCA-CSCS', 'ACE Certified', 'CrossFit L2'], specializations: ['Weight Loss', 'Muscle Gain', 'Strength'],
@@ -54,6 +55,7 @@ const trainers: Trainer[] = [
 export default function TrainersPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [trainers, setTrainers] = useState<Trainer[]>(demoTrainers);
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [bookingState, setBookingState] = useState<'idle' | 'booking' | 'processing' | 'success'>('idle');
   const [selectedDate, setSelectedDate] = useState('');
@@ -65,6 +67,69 @@ export default function TrainersPage() {
   useEffect(() => {
     if (selectedTrainer) setFinalPrice(selectedTrainer.price);
   }, [selectedTrainer]);
+
+  useEffect(() => {
+    const loadTrainers = async () => {
+      // Try to seed demo trainers if missing (silently ignore permission errors)
+      try {
+        const { data: existing } = await supabase
+          .from('trainer_profiles')
+          .select('name')
+          .in('name', demoTrainers.map(t => t.name));
+
+        const existingNames = new Set((existing || []).map(t => t.name));
+        const missing = demoTrainers.filter(t => !existingNames.has(t.name));
+
+        if (missing.length > 0) {
+          await supabase.from('trainer_profiles').insert(
+            missing.map(t => ({
+              user_id: crypto.randomUUID(),
+              name: t.name,
+              specialty: t.specialty,
+              experience: t.experience,
+              price_per_session: t.price,
+              rating: t.rating,
+              reviews_count: t.reviews,
+              emoji: t.emoji,
+              bio: t.bio,
+              certifications: t.certifications,
+              specializations: t.specializations,
+              availability: t.availability,
+              is_active: true,
+            })),
+          );
+        }
+      } catch {
+        // no-op
+      }
+
+      const { data } = await supabase
+        .from('trainer_profiles')
+        .select('*')
+        .eq('is_active', true);
+
+      if (data && data.length > 0) {
+        setTrainers(
+          data.map((t) => ({
+            id: t.id,
+            name: t.name,
+            specialty: t.specialty || 'Fitness Coach',
+            experience: t.experience || 'N/A',
+            rating: t.rating || 4.7,
+            reviews: t.reviews_count || 0,
+            price: t.price_per_session || 499,
+            emoji: t.emoji || '💪',
+            bio: t.bio || 'Elite trainer profile',
+            certifications: t.certifications || [],
+            specializations: t.specializations || [],
+            availability: t.availability || [],
+          })),
+        );
+      }
+    };
+
+    loadTrainers();
+  }, []);
 
   const handleBook = async () => {
     if (!selectedDate || !selectedTime) { toast.error('Please select date and time'); return; }
@@ -82,16 +147,7 @@ export default function TrainersPage() {
         });
       }
 
-      // Resolve trainer_id from trainer_profiles by name, if available
-      let trainerId: string = selectedTrainer.name;
-      const { data: profile } = await supabase
-        .from('trainer_profiles')
-        .select('id')
-        .eq('name', selectedTrainer.name)
-        .maybeSingle();
-      if (profile?.id) {
-        trainerId = profile.id;
-      }
+      const trainerId = selectedTrainer.id || selectedTrainer.name;
 
       // Create booking in Supabase (trainer_bookings used as bookings store)
       const { error: bookingError } = await supabase.from('trainer_bookings').insert({

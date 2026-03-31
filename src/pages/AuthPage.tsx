@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dumbbell, Mail, Lock, ArrowRight, Loader2, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const AVATARS = ['💪', '🏋️', '🧘', '🏃', '⚡', '🔥', '🥇', '🎯'];
@@ -21,6 +22,16 @@ export default function AuthPage() {
   const [selectedAvatar, setSelectedAvatar] = useState('💪');
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate('/dashboard');
+      }
+    };
+    checkSession();
+  }, [navigate]);
 
   if (user) {
     navigate('/dashboard');
@@ -41,7 +52,7 @@ export default function AuthPage() {
       } else {
         await signUp(email, password, 'user');
         localStorage.setItem(`avatar_pending_${email}`, selectedAvatar);
-        toast.success('Account created! You can now sign in.');
+        toast.success('Please verify your email before logging in.');
       }
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong');
@@ -140,10 +151,10 @@ export default function AuthPage() {
           </p>
 
           <div className="text-center mt-3 space-y-2">
-            <button onClick={() => navigate('/trainer-auth')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
+            <button onClick={() => navigate('/trainer-login')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
               Are you a trainer? Login here →
             </button>
-            <button onClick={() => navigate('/admin-auth')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
+            <button onClick={() => navigate('/admin-login')} className="text-xs text-muted-foreground hover:text-foreground transition-colors block">
               Are you an admin? Login here →
             </button>
           </div>

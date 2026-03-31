@@ -26,13 +26,30 @@ const statusConfig: Record<string, { color: string; bg: string; icon: any }> = {
 export default function BookingHistory() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [trainerNames, setTrainerNames] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       supabase.from('trainer_bookings').select('*').eq('user_id', user.id)
         .order('booking_date', { ascending: false }).limit(20)
-        .then(({ data }) => { if (data) setBookings(data); });
+        .then(async ({ data }) => {
+          if (!data) return;
+          setBookings(data);
+          const trainerIds = Array.from(new Set(data.map(b => b.trainer_id)));
+          if (trainerIds.length === 0) return;
+          const { data: trainerData } = await supabase
+            .from('trainer_profiles')
+            .select('id, name')
+            .in('id', trainerIds);
+          if (trainerData) {
+            const byId = trainerData.reduce((acc, t) => {
+              acc[t.id] = t.name;
+              return acc;
+            }, {} as Record<string, string>);
+            setTrainerNames(byId);
+          }
+        });
     }
   }, [user]);
 
@@ -63,7 +80,9 @@ export default function BookingHistory() {
                     <p className="text-foreground text-sm font-medium">
                       {new Date(booking.booking_date).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
-                    <p className="text-xs text-muted-foreground">{booking.start_time} - {booking.end_time}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Trainer: {trainerNames[booking.trainer_id] || booking.trainer_id} • {booking.session_type}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

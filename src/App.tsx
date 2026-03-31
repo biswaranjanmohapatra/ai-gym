@@ -13,6 +13,7 @@ import TrainerDashboard from "./pages/TrainerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import PaymentHistory from "./pages/PaymentHistory";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
+import BookingHistoryPage from "./pages/BookingHistoryPage";
 import WorkoutsPage from "./pages/WorkoutsPage";
 import DietPage from "./pages/DietPage";
 import ExercisesPage from "./pages/ExercisesPage";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/rewards" element={<ProtectedRoute allowedRoles={["user"]}><RewardsPage /></ProtectedRoute>} />
             <Route path="/subscriptions" element={<ProtectedRoute allowedRoles={["user"]}><SubscriptionsPage /></ProtectedRoute>} />
             <Route path="/payment-history" element={<ProtectedRoute allowedRoles={["user"]}><PaymentHistory /></ProtectedRoute>} />
+            <Route path="/booking-history" element={<ProtectedRoute allowedRoles={["user"]}><BookingHistoryPage /></ProtectedRoute>} />
             <Route path="/community" element={<CommunityPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

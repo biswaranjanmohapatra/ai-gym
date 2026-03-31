@@ -105,6 +105,7 @@ export default function TrainerDashboard() {
           amount: booking.payment_amount,
           date: new Date().toISOString(),
           status: 'paid',
+          type: 'trainer',
         });
       if (payError) {
         console.error(payError);
