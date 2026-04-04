@@ -52,9 +52,9 @@ export default function AuthPage() {
         else if (role === 'admin') navigate('/admin-dashboard');
         else navigate('/dashboard');
       } else {
-        await signUp(email, password, 'user');
+        await signUp(email, password, 'user', name.trim() || undefined);
         localStorage.setItem(`avatar_pending_${email}`, selectedAvatar);
-        toast.success('Please verify your email before logging in.');
+        toast.success('Account created! Please verify your email before logging in.');
       }
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong');

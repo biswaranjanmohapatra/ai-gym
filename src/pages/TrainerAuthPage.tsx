@@ -36,22 +36,33 @@ export default function TrainerAuthPage() {
     setLoading(true);
     try {
       if (isLogin) {
-        await signIn(email, password);
+        const resolvedRole = await signIn(email, password);
+        if (resolvedRole !== 'trainer') {
+          toast.error('This account is not registered as a trainer.');
+          await supabase.auth.signOut();
+          return;
+        }
         toast.success('Welcome back, Coach!');
         navigate('/trainer-dashboard');
       } else {
-        const userId = await signUp(email, password, 'trainer');
+        const userId = await signUp(email, password, 'trainer', name.trim());
         if (userId) {
+          // Auto-create trainer_profile (user_id set, will be confirmed after email verify)
           await supabase.from('trainer_profiles').insert({
             user_id: userId,
-            name,
-            specialty,
-            experience,
+            name: name.trim(),
+            specialty: specialty.trim() || 'Fitness Coach',
+            experience: experience || '1-3 years',
             price_per_session: 500,
             is_active: true,
+            bio: `${name.trim()} — Professional fitness trainer.`,
+            certifications: [],
+            specializations: [],
+            availability: [],
+            emoji: '💪',
           } as any);
         }
-        toast.success('Please verify your email before logging in.');
+        toast.success('Account created! Please verify your email to access your trainer dashboard.');
       }
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong');

@@ -12,7 +12,7 @@ interface AuthContextType {
   user: AuthUser | null;
   role: AppRole | null;
   loading: boolean;
-  signUp: (email: string, password: string, role: AppRole) => Promise<string | null>;
+  signUp: (email: string, password: string, role: AppRole, name?: string) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<AppRole | null>;
   signOut: () => Promise<void>;
 }
@@ -35,44 +35,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setUser({ id: authUser.id, email: authUser.email });
+      setUser({ id: authUser.id, email: authUser.email ?? null });
 
-      const { data: roles, error } = await supabase
+      const { data: roles } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', authUser.id)
         .limit(1)
         .maybeSingle();
 
-      if (error) {
-        console.error('Failed to load user role', error);
-        setRole(null);
-      } else {
-        setRole((roles?.role as AppRole) ?? null);
-      }
-
+      setRole((roles?.role as AppRole) ?? null);
       setLoading(false);
     };
 
     init();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setRole(null);
+      } else if (session?.user) {
+        const authUser = session.user;
+        setUser({ id: authUser.id, email: authUser.email ?? null });
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', authUser.id)
+          .limit(1)
+          .maybeSingle();
+        setRole((roles?.role as AppRole) ?? null);
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, roleToAssign: AppRole) => {
+  const signUp = async (email: string, password: string, roleToAssign: AppRole, name?: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: "http://localhost:8080/user-login",
+        emailRedirectTo: `${window.location.origin}/user-login`,
       },
     });
     if (error) throw error;
     const authUser = data.user;
     if (!authUser) return null;
 
-    await supabase.from('user_roles').insert({
+    // Insert role
+    await supabase.from('user_roles').upsert({
       user_id: authUser.id,
       role: roleToAssign,
     });
+
+    // Insert profile with name and role
+    await supabase.from('profiles').upsert({
+      user_id: authUser.id,
+      name: name || email.split('@')[0],
+      role: roleToAssign,
+    } as any);
 
     // Do not auto-sign-in; require email verification first
     setUser(null);
@@ -81,10 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     const authUser = data.user;
     if (!authUser) return null;
@@ -92,10 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Enforce email verification
     if (!authUser.email_confirmed_at) {
       await supabase.auth.signOut();
-      throw new Error("Please verify your email before logging in.");
+      throw new Error('Please verify your email before logging in. Check your inbox.');
     }
 
-    setUser({ id: authUser.id, email: authUser.email });
+    setUser({ id: authUser.id, email: authUser.email ?? null });
 
     const { data: roleRow } = await supabase
       .from('user_roles')
@@ -106,6 +124,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const resolvedRole = (roleRow?.role as AppRole) ?? null;
     setRole(resolvedRole);
+
+    // Sync profile name/role if not set
+    if (resolvedRole) {
+      await supabase.from('profiles').upsert({
+        user_id: authUser.id,
+        role: resolvedRole,
+      } as any);
+    }
+
     return resolvedRole;
   };
 

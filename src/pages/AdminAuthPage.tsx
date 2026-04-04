@@ -33,13 +33,17 @@ export default function AdminAuthPage() {
     setLoading(true);
     try {
       if (isLogin) {
-        await signIn(email, password);
+        const resolvedRole = await signIn(email, password);
+        if (resolvedRole !== 'admin') {
+          toast.error('This account is not registered as an admin.');
+          await supabase.auth.signOut();
+          return;
+        }
         toast.success('Welcome back, Administrator!');
         navigate('/admin-dashboard');
       } else {
-        await signUp(email, password, 'admin');
-        localStorage.setItem(`pending_admin_${email}`, JSON.stringify({ name }));
-        toast.success('Please verify your email before logging in.');
+        await signUp(email, password, 'admin', name.trim());
+        toast.success('Admin account created! Please verify your email before logging in.');
       }
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong');

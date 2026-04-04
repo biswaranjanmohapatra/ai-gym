@@ -15,11 +15,11 @@ import PaymentHistory from "./pages/PaymentHistory";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
 import SubscriptionHistoryPage from "./pages/SubscriptionHistoryPage";
 import BookingHistoryPage from "./pages/BookingHistoryPage";
+import TrainersPage from "./pages/TrainersPage";
 import WorkoutsPage from "./pages/WorkoutsPage";
 import DietPage from "./pages/DietPage";
 import ExercisesPage from "./pages/ExercisesPage";
 import CalendarPage from "./pages/CalendarPage";
-import TrainersPage from "./pages/TrainersPage";
 import RewardsPage from "./pages/RewardsPage";
 import CommunityPage from "./pages/CommunityPage";
 import NotFound from "./pages/NotFound";
@@ -28,16 +28,34 @@ const queryClient = new QueryClient();
 
 type AppRole = "user" | "trainer" | "admin";
 
-function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: AppRole[] }) {
+function ProtectedRoute({
+  children,
+  allowedRoles,
+}: {
+  children: React.ReactNode;
+  allowedRoles?: AppRole[];
+}) {
   const { user, role, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
-  if (!user) return <Navigate to="/user-login" replace />;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/user-login" replace />;
+  }
+
   if (allowedRoles && (!role || !allowedRoles.includes(role))) {
-    // Redirect based on actual role dashboard if logged in with different role
+    // Redirect to correct dashboard based on actual role
     if (role === "trainer") return <Navigate to="/trainer-dashboard" replace />;
     if (role === "admin") return <Navigate to="/admin-dashboard" replace />;
     return <Navigate to="/dashboard" replace />;
   }
+
   return <>{children}</>;
 }
 
@@ -49,24 +67,132 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* ─── PUBLIC ─── */}
             <Route path="/" element={<Index />} />
             <Route path="/user-login" element={<AuthPage />} />
             <Route path="/trainer-login" element={<TrainerAuthPage />} />
             <Route path="/admin-login" element={<AdminAuthPage />} />
-            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["user"]}><Dashboard /></ProtectedRoute>} />
-            <Route path="/trainer-dashboard" element={<ProtectedRoute allowedRoles={["trainer"]}><TrainerDashboard /></ProtectedRoute>} />
-            <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/workouts" element={<ProtectedRoute allowedRoles={["user"]}><WorkoutsPage /></ProtectedRoute>} />
-            <Route path="/diet" element={<ProtectedRoute allowedRoles={["user"]}><DietPage /></ProtectedRoute>} />
-            <Route path="/exercises" element={<ProtectedRoute allowedRoles={["user"]}><ExercisesPage /></ProtectedRoute>} />
-            <Route path="/calendar" element={<ProtectedRoute allowedRoles={["user"]}><CalendarPage /></ProtectedRoute>} />
-            <Route path="/trainers" element={<ProtectedRoute allowedRoles={["user"]}><TrainersPage /></ProtectedRoute>} />
-            <Route path="/rewards" element={<ProtectedRoute allowedRoles={["user"]}><RewardsPage /></ProtectedRoute>} />
-            <Route path="/subscriptions" element={<ProtectedRoute allowedRoles={["user"]}><SubscriptionsPage /></ProtectedRoute>} />
-            <Route path="/subscription-history" element={<ProtectedRoute allowedRoles={["user"]}><SubscriptionHistoryPage /></ProtectedRoute>} />
-            <Route path="/payment-history" element={<ProtectedRoute allowedRoles={["user", "trainer", "admin"]}><PaymentHistory /></ProtectedRoute>} />
-            <Route path="/booking-history" element={<ProtectedRoute allowedRoles={["user"]}><BookingHistoryPage /></ProtectedRoute>} />
-            <Route path="/community" element={<ProtectedRoute allowedRoles={["user"]}><CommunityPage /></ProtectedRoute>} />
+
+            {/* ─── USER-ONLY ROUTES ─── */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trainers"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <TrainersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workouts"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <WorkoutsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/exercises"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <ExercisesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/diet"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <DietPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <CalendarPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/community"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <CommunityPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/rewards"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <RewardsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subscriptions"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <SubscriptionsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subscription-history"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <SubscriptionHistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/booking-history"
+              element={
+                <ProtectedRoute allowedRoles={["user"]}>
+                  <BookingHistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            {/* Payment history: users see their payments, trainers see their earnings */}
+            <Route
+              path="/payment-history"
+              element={
+                <ProtectedRoute allowedRoles={["user", "trainer"]}>
+                  <PaymentHistory />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ─── TRAINER-ONLY ROUTES ─── */}
+            <Route
+              path="/trainer-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["trainer"]}>
+                  <TrainerDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ─── ADMIN-ONLY ROUTES ─── */}
+            <Route
+              path="/admin-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ─── 404 ─── */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

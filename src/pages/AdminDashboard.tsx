@@ -6,25 +6,11 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  Users, Shield, Settings, BarChart3, UserCheck, Calendar, 
-  TrendingUp, Activity, Award, AlertCircle, CheckCircle, XCircle,
-  Database, Lock, Eye, EyeOff, DollarSign
+import {
+  Users, Shield, Settings, BarChart3, UserCheck, Calendar,
+  TrendingUp, Activity, Award, CheckCircle, XCircle,
+  Database, Lock, IndianRupee, Trash2, Loader2, CreditCard
 } from 'lucide-react';
-
-interface UserStats {
-  totalUsers: number;
-  totalTrainers: number;
-  totalAdmins: number;
-  activeUsers: number;
-}
-
-interface BookingStats {
-  totalBookings: number;
-  activeBookings: number;
-  completedBookings: number;
-  cancelledBookings: number;
-}
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
@@ -32,455 +18,469 @@ const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [userStats, setUserStats] = useState<UserStats>({ totalUsers: 0, totalTrainers: 0, totalAdmins: 0, activeUsers: 0 });
-  const [bookingStats, setBookingStats] = useState<BookingStats>({ totalBookings: 0, activeBookings: 0, completedBookings: 0, cancelledBookings: 0 });
-  const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'trainers' | 'bookings' | 'payments' | 'subscriptions' | 'settings'>('overview');
+
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [allTrainers, setAllTrainers] = useState<any[]>([]);
   const [allBookings, setAllBookings] = useState<any[]>([]);
   const [allPayments, setAllPayments] = useState<any[]>([]);
   const [allSubscriptions, setAllSubscriptions] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'trainers' | 'bookings' | 'payments' | 'subscriptions' | 'settings'>('overview');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      fetchStats();
-      fetchRecentUsers();
-      fetchAdminData();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'users' || tab === 'trainers' || tab === 'bookings' || tab === 'payments' || tab === 'subscriptions' || tab === 'settings' || tab === 'overview') {
-      setActiveTab(tab);
-    }
+    const tab = searchParams.get('tab') as any;
+    const validTabs = ['overview', 'users', 'trainers', 'bookings', 'payments', 'subscriptions', 'settings'];
+    if (validTabs.includes(tab)) setActiveTab(tab);
   }, [searchParams]);
 
-  const fetchAdminData = async () => {
-    const [{ data: trainers }, { data: bookings }, { data: payments }, { data: subscriptions }] = await Promise.all([
-      supabase.from('trainer_profiles').select('*').order('created_at', { ascending: false }),
-      supabase.from('trainer_bookings').select('*').order('booking_date', { ascending: false }),
-      supabase.from('payments' as any).select('*').order('date', { ascending: false }),
-      supabase.from('subscriptions' as any).select('*').order('created_at', { ascending: false }),
-    ]);
-    setAllTrainers(trainers || []);
-    setAllBookings(bookings || []);
-    setAllPayments(payments || []);
-    setAllSubscriptions(subscriptions || []);
-  };
+  useEffect(() => {
+    if (user) fetchAll();
+  }, [user]);
 
-  const deleteUser = async (userId: string) => {
-    const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
-    if (error) {
-      toast.error('Failed to delete user');
-      return;
-    }
-    toast.success('User removed');
-    fetchRecentUsers();
-  };
-
-  const deleteTrainer = async (trainerId: string) => {
-    const { error } = await supabase.from('trainer_profiles').delete().eq('id', trainerId);
-    if (error) {
-      toast.error('Failed to delete trainer');
-      return;
-    }
-    toast.success('Trainer removed');
-    fetchAdminData();
-  };
-
-  const fetchStats = async () => {
+  const fetchAll = async () => {
+    setLoading(true);
     try {
-      // Fetch user role counts
-      const { data: allRoles } = await supabase.from('user_roles').select('role');
-      if (allRoles) {
-        const totalUsers = allRoles.filter(r => r.role === 'user').length;
-        const totalTrainers = allRoles.filter(r => r.role === 'trainer').length;
-        const totalAdmins = allRoles.filter(r => r.role === 'admin').length;
-        setUserStats({ 
-          totalUsers, 
-          totalTrainers, 
-          totalAdmins, 
-          activeUsers: allRoles.length 
-        });
-      }
+      const [
+        { data: roles },
+        { data: profiles },
+        { data: trainers },
+        { data: bookings },
+        { data: payments },
+        { data: subscriptions },
+      ] = await Promise.all([
+        supabase.from('user_roles').select('user_id, role'),
+        supabase.from('profiles').select('user_id, name, created_at'),
+        supabase.from('trainer_profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('trainer_bookings').select('*').order('booking_date', { ascending: false }),
+        supabase.from('payments' as any).select('*').order('date', { ascending: false }),
+        supabase.from('subscriptions' as any).select('*').order('created_at', { ascending: false }),
+      ]);
 
-      // Fetch booking stats
-      const { data: bookings } = await supabase.from('trainer_bookings').select('status');
-      if (bookings) {
-        setBookingStats({
-          totalBookings: bookings.length,
-          activeBookings: bookings.filter(b => b.status === 'active').length,
-          completedBookings: bookings.filter(b => b.status === 'completed').length,
-          cancelledBookings: bookings.filter(b => b.status === 'cancelled').length,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+      // Merge users: join profiles + roles
+      const merged = (roles || []).map((row: any) => {
+        const profile = (profiles || []).find((p: any) => p.user_id === row.user_id);
+        return {
+          id: row.user_id,
+          name: profile?.name || 'Unknown',
+          role: row.role,
+          created_at: profile?.created_at || new Date().toISOString(),
+        };
+      });
+
+      setAllUsers(merged);
+      setAllTrainers(trainers || []);
+      setAllBookings(bookings || []);
+      setAllPayments((payments as any[]) || []);
+      setAllSubscriptions((subscriptions as any[]) || []);
+    } catch (err) {
+      console.error('Admin fetch error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchRecentUsers = async () => {
-    try {
-      // Fetch recent user roles
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .limit(10);
-      
-      if (roles) {
-        // Fetch profiles for these users
-        const userIds = roles.map(r => r.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, name, created_at')
-          .in('user_id', userIds);
-        
-        // Combine roles with profiles
-        const usersWithRoles = roles.map(role => {
-          const profile = profiles?.find(p => p.user_id === role.user_id);
-          return {
-            user_id: role.user_id,
-            name: profile?.name || 'No name',
-            role: role.role,
-            created_at: profile?.created_at || new Date().toISOString(),
-          };
-        });
-        setRecentUsers(usersWithRoles);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
+  const deleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
+    if (error) { toast.error('Failed to delete user: ' + error.message); return; }
+    toast.success('User deleted');
+    fetchAll();
+  };
+
+  const deleteTrainer = async (trainerId: string) => {
+    if (!confirm('Are you sure you want to delete this trainer?')) return;
+    const { error } = await supabase.from('trainer_profiles').delete().eq('id', trainerId);
+    if (error) { toast.error('Failed to delete trainer: ' + error.message); return; }
+    toast.success('Trainer deleted');
+    fetchAll();
+  };
+
+  const setTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
+
+  // Stats
+  const stats = {
+    users: allUsers.filter(u => u.role === 'user').length,
+    trainers: allUsers.filter(u => u.role === 'trainer').length,
+    admins: allUsers.filter(u => u.role === 'admin').length,
+    totalBookings: allBookings.length,
+    pendingBookings: allBookings.filter((b: any) => b.status === 'pending').length,
+    totalRevenue: allPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0),
+    activeSubscriptions: allSubscriptions.filter((s: any) => s.status === 'active').length,
   };
 
   const tabs = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
-    { id: 'users' as const, label: 'Users', icon: Users },
-    { id: 'trainers' as const, label: 'Trainers', icon: Award },
-    { id: 'bookings' as const, label: 'Bookings', icon: Calendar },
-    { id: 'payments' as const, label: 'Payments', icon: DollarSign },
+    { id: 'users' as const, label: `Users (${stats.users})`, icon: Users },
+    { id: 'trainers' as const, label: `Trainers (${stats.trainers})`, icon: Award },
+    { id: 'bookings' as const, label: `Bookings (${stats.totalBookings})`, icon: Calendar },
+    { id: 'payments' as const, label: 'Payments', icon: CreditCard },
     { id: 'subscriptions' as const, label: 'Subscriptions', icon: Database },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-10 w-10 text-purple-400 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <motion.div variants={containerVariants} initial="hidden" animate="visible" className="container mx-auto px-4 pt-24 pb-12">
-        <motion.div variants={itemVariants} className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="h-8 w-8" style={{ color: 'hsl(280 100% 50%)' }} />
-            <h1 className="font-display text-4xl md:text-5xl text-foreground">Admin Dashboard</h1>
+
+        {/* Header */}
+        <motion.div variants={itemVariants} className="flex items-center gap-3 mb-7">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+            <Shield className="h-5 w-5 text-purple-400" />
           </div>
-          <p className="text-muted-foreground">Manage users, bookings, and system settings.</p>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">Admin Dashboard</h1>
+            <p className="text-muted-foreground text-sm">Full system control — users, trainers, bookings, payments</p>
+          </div>
         </motion.div>
 
         {/* Tabs */}
-        <motion.div variants={itemVariants} className="flex gap-2 mb-8 overflow-x-auto pb-2">
+        <motion.div variants={itemVariants} className="flex gap-2 mb-7 overflow-x-auto pb-2">
           {tabs.map(tab => (
-            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSearchParams({ tab: tab.id }); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
-                activeTab === tab.id 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-secondary/50 text-muted-foreground hover:text-foreground'
-              }`}>
+            <button
+              key={tab.id}
+              onClick={() => setTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-purple-500 text-white shadow-[0_0_15px_hsl(280_100%_50%/0.3)]'
+                  : 'bg-secondary/40 text-muted-foreground hover:text-foreground hover:bg-secondary/70'
+              }`}
+            >
               <tab.icon className="h-4 w-4" />
               {tab.label}
             </button>
           ))}
         </motion.div>
 
-        {/* Overview Tab */}
+        {/* ─── OVERVIEW ─── */}
         {activeTab === 'overview' && (
           <>
-            {/* Stats Grid */}
-            <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {[
-                { icon: Users, label: 'Total Users', value: userStats.totalUsers, color: 'text-primary' },
-                { icon: Award, label: 'Trainers', value: userStats.totalTrainers, color: 'text-accent' },
-                { icon: Shield, label: 'Admins', value: userStats.totalAdmins, color: 'text-purple-400' },
-                { icon: Activity, label: 'Active Users', value: userStats.activeUsers, color: 'text-primary' },
+                { icon: Users, label: 'Total Users', value: stats.users, color: 'text-primary', bg: 'bg-primary/10 border-primary/20' },
+                { icon: Award, label: 'Trainers', value: stats.trainers, color: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/20' },
+                { icon: Shield, label: 'Admins', value: stats.admins, color: 'text-purple-400', bg: 'bg-purple-400/10 border-purple-400/20' },
+                { icon: Activity, label: 'Total Members', value: allUsers.length, color: 'text-foreground', bg: 'bg-secondary/30 border-border/30' },
               ].map((stat, i) => (
-                <motion.div key={i} whileHover={{ y: -2 }} className="glass-card p-5">
-                  <div className="flex items-center gap-2 mb-1">
+                <motion.div key={i} whileHover={{ y: -2 }} className={`rounded-2xl border p-5 ${stat.bg}`}>
+                  <div className="flex items-center gap-2 mb-2">
                     <stat.icon className={`h-4 w-4 ${stat.color}`} />
                     <span className="text-xs text-muted-foreground">{stat.label}</span>
                   </div>
-                  <p className={`font-display text-2xl ${stat.color}`}>{stat.value}</p>
+                  <p className={`font-black text-2xl ${stat.color}`}>{stat.value}</p>
                 </motion.div>
               ))}
             </motion.div>
 
-            {/* Booking Stats */}
-            <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {[
-                { icon: Calendar, label: 'Total Bookings', value: bookingStats.totalBookings, color: 'text-primary' },
-                { icon: CheckCircle, label: 'Active', value: bookingStats.activeBookings, color: 'text-accent' },
-                { icon: TrendingUp, label: 'Completed', value: bookingStats.completedBookings, color: 'text-primary' },
-                { icon: XCircle, label: 'Cancelled', value: bookingStats.cancelledBookings, color: 'text-destructive' },
+                { icon: Calendar, label: 'Total Bookings', value: stats.totalBookings, color: 'text-primary' },
+                { icon: CheckCircle, label: 'Pending', value: stats.pendingBookings, color: 'text-yellow-400' },
+                { icon: TrendingUp, label: 'Total Revenue', value: `₹${stats.totalRevenue.toLocaleString()}`, color: 'text-green-400' },
+                { icon: Database, label: 'Active Subs', value: stats.activeSubscriptions, color: 'text-purple-400' },
               ].map((stat, i) => (
-                <motion.div key={i} whileHover={{ y: -2 }} className="glass-card p-5">
-                  <div className="flex items-center gap-2 mb-1">
+                <motion.div key={i} whileHover={{ y: -2 }} className="bg-secondary/20 border border-border/30 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-2">
                     <stat.icon className={`h-4 w-4 ${stat.color}`} />
                     <span className="text-xs text-muted-foreground">{stat.label}</span>
                   </div>
-                  <p className={`font-display text-2xl ${stat.color}`}>{stat.value}</p>
+                  <p className={`font-black text-2xl ${stat.color}`}>{stat.value}</p>
                 </motion.div>
               ))}
             </motion.div>
 
             {/* Recent Users */}
-            <motion.div variants={itemVariants} className="glass-card p-6 mb-8">
-              <h3 className="font-display text-xl text-foreground mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" /> Recent Users
+            <motion.div variants={itemVariants} className="bg-secondary/20 border border-border/30 rounded-2xl p-6">
+              <h3 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" /> Recent Members
               </h3>
-              {recentUsers.length > 0 ? (
-                <div className="space-y-3">
-                  {recentUsers.map((profile: any) => (
-                    <motion.div key={profile.user_id} whileHover={{ x: 4 }} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary/70 transition-colors">
-                      <div>
-                        <p className="text-foreground font-medium">{profile.name || 'No name'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          User ID: {profile.user_id?.substring(0, 8)}... • 
-                          {profile.role || 'user'}
-                        </p>
+              {allUsers.length > 0 ? (
+                <div className="space-y-2">
+                  {allUsers.slice(0, 8).map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <UserCheck className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground text-sm">{u.name}</p>
+                          <p className="text-xs text-muted-foreground">{u.id.substring(0, 8)}...</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(profile.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </motion.div>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        u.role === 'admin' ? 'bg-purple-400/10 text-purple-400' :
+                        u.role === 'trainer' ? 'bg-yellow-400/10 text-yellow-400' :
+                        'bg-primary/10 text-primary'
+                      }`}>{u.role}</span>
+                    </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-muted-foreground text-center py-8">No users found.</p>
+                <p className="text-muted-foreground text-center py-8 text-sm">No users found.</p>
               )}
             </motion.div>
           </>
         )}
 
-        {/* Users Tab */}
+        {/* ─── USERS TAB ─── */}
         {activeTab === 'users' && (
-          <motion.div variants={itemVariants} className="glass-card p-6">
-            <h3 className="font-display text-xl text-foreground mb-4 flex items-center gap-2">
+          <motion.div variants={itemVariants} className="bg-secondary/20 border border-border/30 rounded-2xl p-6">
+            <h3 className="font-bold text-xl text-foreground mb-2 flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" /> All Users
             </h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Total: {userStats.totalUsers} users, {userStats.totalTrainers} trainers, {userStats.totalAdmins} admins
+            <p className="text-muted-foreground text-sm mb-5">
+              {stats.users} users · {stats.trainers} trainers · {stats.admins} admins
             </p>
-            <div className="space-y-3">
-              {recentUsers.map((profile: any) => (
-                <motion.div key={profile.user_id} whileHover={{ x: 4 }} className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 hover:bg-secondary/70 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <UserCheck className="h-5 w-5 text-primary" />
+            {allUsers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No users found.</p>
+            ) : (
+              <div className="space-y-3">
+                {allUsers.map(u => (
+                  <div key={u.id} className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <UserCheck className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">{u.name}</p>
+                        <p className="text-xs text-muted-foreground">ID: {u.id.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString('en-IN')}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-foreground font-medium">{profile.name || 'No name'}</p>
-                      <p className="text-xs text-muted-foreground">ID: {profile.user_id?.substring(0, 8)}...</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      profile.role === 'admin' ? 'bg-purple-500/10 text-purple-400' :
-                      profile.role === 'trainer' ? 'bg-accent/10 text-accent' :
-                      'bg-primary/10 text-primary'
-                    }`}>
-                      {profile.role || 'user'}
-                    </span>
-                    <div className="mt-2">
-                      <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => deleteUser(profile.user_id)}>
-                        Delete User
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        u.role === 'admin' ? 'bg-purple-400/10 text-purple-400' :
+                        u.role === 'trainer' ? 'bg-yellow-400/10 text-yellow-400' :
+                        'bg-primary/10 text-primary'
+                      }`}>{u.role}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive border-destructive/30 hover:bg-destructive hover:text-white h-8"
+                        onClick={() => deleteUser(u.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
                       </Button>
                     </div>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-            <h3 className="font-display text-xl text-foreground mt-8 mb-4">Manage Trainers</h3>
-            <div className="space-y-3">
-              {allTrainers.map((trainer: any) => (
-                <div key={trainer.id} className="flex items-center justify-between p-4 rounded-lg bg-secondary/40">
-                  <div>
-                    <p className="text-foreground font-medium">{trainer.name}</p>
-                    <p className="text-xs text-muted-foreground">{trainer.specialty} • ₹{trainer.price_per_session || 0}</p>
-                  </div>
-                  <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => deleteTrainer(trainer.id)}>
-                    Delete Trainer
-                  </Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
-        {/* Trainers Tab */}
+        {/* ─── TRAINERS TAB ─── */}
         {activeTab === 'trainers' && (
-          <motion.div variants={itemVariants} className="glass-card p-6">
-            <h3 className="font-display text-xl text-foreground mb-4 flex items-center gap-2">
-              <Award className="h-5 w-5 text-primary" /> Manage Trainers
+          <motion.div variants={itemVariants} className="bg-secondary/20 border border-border/30 rounded-2xl p-6">
+            <h3 className="font-bold text-xl text-foreground mb-5 flex items-center gap-2">
+              <Award className="h-5 w-5 text-yellow-400" /> All Trainers
             </h3>
-            <div className="space-y-3">
-              {allTrainers.map((trainer: any) => (
-                <div key={trainer.id} className="flex items-center justify-between p-4 rounded-lg bg-secondary/40">
-                  <div>
-                    <p className="text-foreground font-medium">{trainer.name}</p>
-                    <p className="text-xs text-muted-foreground">{trainer.specialty} • ₹{trainer.price_per_session || 0}</p>
+            {allTrainers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No trainers registered yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {allTrainers.map((trainer: any) => (
+                  <div key={trainer.id} className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{trainer.emoji || '💪'}</span>
+                      <div>
+                        <p className="font-semibold text-foreground">{trainer.name}</p>
+                        <p className="text-xs text-muted-foreground">{trainer.specialty}</p>
+                        <p className="text-xs text-yellow-400">₹{trainer.price_per_session?.toLocaleString()}/session</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs px-2 py-1 rounded-full ${trainer.is_active ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                        {trainer.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive border-destructive/30 hover:bg-destructive hover:text-white h-8"
+                        onClick={() => deleteTrainer(trainer.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                      </Button>
+                    </div>
                   </div>
-                  <Button size="sm" variant="outline" className="text-destructive border-destructive/40" onClick={() => deleteTrainer(trainer.id)}>
-                    Delete Trainer
-                  </Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
-        {/* Bookings Tab */}
+        {/* ─── BOOKINGS TAB ─── */}
         {activeTab === 'bookings' && (
-          <motion.div variants={itemVariants} className="glass-card p-6">
-            <h3 className="font-display text-xl text-foreground mb-4 flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" /> All Bookings
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="glass-card p-4">
-                <p className="text-xs text-muted-foreground mb-1">Total Bookings</p>
-                <p className="font-display text-2xl text-primary">{bookingStats.totalBookings}</p>
-              </div>
-              <div className="glass-card p-4">
-                <p className="text-xs text-muted-foreground mb-1">Active</p>
-                <p className="font-display text-2xl text-accent">{bookingStats.activeBookings}</p>
-              </div>
-              <div className="glass-card p-4">
-                <p className="text-xs text-muted-foreground mb-1">Completed</p>
-                <p className="font-display text-2xl text-primary">{bookingStats.completedBookings}</p>
-              </div>
-            </div>
-            <div className="space-y-3 mb-8">
-              {allBookings.slice(0, 25).map((booking: any) => (
-                <div key={booking.id} className="p-3 rounded-lg bg-secondary/40 flex justify-between">
-                  <div>
-                    <p className="text-sm text-foreground">User: {booking.user_id}</p>
-                    <p className="text-xs text-muted-foreground">Trainer: {booking.trainer_id}</p>
-                    <p className="text-xs text-muted-foreground">{booking.booking_date} • {booking.start_time}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-primary font-medium">₹{booking.payment_amount || 0}</p>
-                    <p className="text-[10px] text-muted-foreground">{booking.status}</p>
-                  </div>
+          <motion.div variants={itemVariants} className="space-y-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Total', value: allBookings.length, color: 'text-foreground' },
+                { label: 'Pending', value: allBookings.filter((b: any) => b.status === 'pending').length, color: 'text-yellow-400' },
+                { label: 'Approved', value: allBookings.filter((b: any) => b.status === 'approved' || b.status === 'active').length, color: 'text-primary' },
+                { label: 'Cancelled', value: allBookings.filter((b: any) => b.status === 'cancelled').length, color: 'text-destructive' },
+              ].map(stat => (
+                <div key={stat.label} className="bg-secondary/20 border border-border/30 rounded-2xl p-4 text-center">
+                  <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
                 </div>
               ))}
             </div>
-            <h3 className="font-display text-xl text-foreground mb-4">All Payments</h3>
-            <div className="space-y-2">
-              {allPayments.slice(0, 25).map((payment: any) => (
-                <div key={payment.id} className="p-3 rounded-lg bg-secondary/40 flex justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">User: {payment.user_id}</p>
-                    <p className="text-xs text-muted-foreground">Trainer: {payment.trainer_id || '-'}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-primary font-medium">₹{payment.amount}</p>
-                    <p className="text-[10px] text-muted-foreground">{payment.status}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Payments Tab */}
-        {activeTab === 'payments' && (
-          <motion.div variants={itemVariants} className="glass-card p-6">
-            <h3 className="font-display text-xl text-foreground mb-4">All Payments</h3>
-            <div className="space-y-2">
-              {allPayments.map((payment: any) => (
-                <div key={payment.id} className="p-3 rounded-lg bg-secondary/40 flex justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">User: {payment.user_id}</p>
-                    <p className="text-xs text-muted-foreground">Trainer: {payment.trainer_id || '-'}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(payment.date).toLocaleDateString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-primary font-medium">₹{payment.amount}</p>
-                    <p className="text-[10px] text-muted-foreground">{payment.type || 'trainer'} • {payment.status}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Subscriptions Tab */}
-        {activeTab === 'subscriptions' && (
-          <motion.div variants={itemVariants} className="glass-card p-6">
-            <h3 className="font-display text-xl text-foreground mb-4">All Subscriptions</h3>
-            <div className="space-y-2">
-              {allSubscriptions.map((sub: any) => (
-                <div key={sub.id} className="p-3 rounded-lg bg-secondary/40 flex justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">User: {sub.user_id}</p>
-                    <p className="text-xs text-muted-foreground">Plan: {sub.plan}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(sub.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-primary font-medium">₹{sub.price}</p>
-                    <p className="text-[10px] text-muted-foreground">{sub.status}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <motion.div variants={itemVariants} className="space-y-6">
-            <div className="glass-card p-6">
-              <h3 className="font-display text-xl text-foreground mb-4 flex items-center gap-2">
-                <Settings className="h-5 w-5 text-primary" /> System Settings
+            <div className="bg-secondary/20 border border-border/30 rounded-2xl p-6">
+              <h3 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" /> All Bookings
               </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
-                  <div>
-                    <p className="text-foreground font-medium">Database Management</p>
-                    <p className="text-xs text-muted-foreground">Manage database connections and backups</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Database className="h-4 w-4 mr-2" />
-                    Manage
-                  </Button>
+              {allBookings.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No bookings found.</p>
+              ) : (
+                <div className="space-y-2">
+                  {allBookings.slice(0, 50).map((booking: any) => (
+                    <div key={booking.id} className="p-3 rounded-xl bg-secondary/30 flex justify-between items-start gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">User: {booking.user_id.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">Trainer: {booking.trainer_id?.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">{booking.booking_date} · {booking.start_time} · {booking.session_type}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold text-primary">₹{booking.payment_amount?.toLocaleString()}</p>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                          booking.status === 'pending' ? 'bg-yellow-400/10 text-yellow-400' :
+                          booking.status === 'approved' ? 'bg-primary/10 text-primary' :
+                          booking.status === 'cancelled' ? 'bg-destructive/10 text-destructive' :
+                          'bg-secondary text-muted-foreground'
+                        }`}>{booking.status}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
-                  <div>
-                    <p className="text-foreground font-medium">Security Settings</p>
-                    <p className="text-xs text-muted-foreground">Configure security policies and access controls</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Lock className="h-4 w-4 mr-2" />
-                    Configure
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
-                  <div>
-                    <p className="text-foreground font-medium">System Analytics</p>
-                    <p className="text-xs text-muted-foreground">View system performance and analytics</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    View
-                  </Button>
-                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── PAYMENTS TAB ─── */}
+        {activeTab === 'payments' && (
+          <motion.div variants={itemVariants} className="space-y-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="bg-green-400/10 border border-green-400/20 rounded-2xl p-5 text-center">
+                <p className="text-xs text-muted-foreground mb-2">Total Revenue</p>
+                <p className="text-2xl font-black text-green-400">₹{stats.totalRevenue.toLocaleString()}</p>
+              </div>
+              <div className="bg-secondary/20 border border-border/30 rounded-2xl p-5 text-center">
+                <p className="text-xs text-muted-foreground mb-2">Trainer Sessions</p>
+                <p className="text-2xl font-black text-yellow-400">{allPayments.filter((p: any) => p.type === 'trainer').length}</p>
+              </div>
+              <div className="bg-secondary/20 border border-border/30 rounded-2xl p-5 text-center">
+                <p className="text-xs text-muted-foreground mb-2">Subscriptions</p>
+                <p className="text-2xl font-black text-purple-400">{allPayments.filter((p: any) => p.type === 'subscription').length}</p>
               </div>
             </div>
+            <div className="bg-secondary/20 border border-border/30 rounded-2xl p-6">
+              <h3 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-primary" /> All Payments
+              </h3>
+              {allPayments.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No payments found.</p>
+              ) : (
+                <div className="space-y-2">
+                  {allPayments.map((payment: any) => (
+                    <div key={payment.id} className="p-3 rounded-xl bg-secondary/30 flex justify-between items-center">
+                      <div>
+                        <p className="text-sm font-medium text-foreground capitalize">{payment.type}</p>
+                        <p className="text-xs text-muted-foreground">User: {payment.user_id?.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">{new Date(payment.date).toLocaleDateString('en-IN')}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-primary">₹{payment.amount?.toLocaleString()}</p>
+                        <span className="text-[10px] text-green-400">{payment.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── SUBSCRIPTIONS TAB ─── */}
+        {activeTab === 'subscriptions' && (
+          <motion.div variants={itemVariants} className="space-y-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Total', value: allSubscriptions.length, color: 'text-foreground' },
+                { label: 'Active', value: allSubscriptions.filter((s: any) => s.status === 'active').length, color: 'text-primary' },
+                { label: 'Subscription Revenue', value: `₹${allSubscriptions.filter((s: any) => s.status === 'active').reduce((s: number, sub: any) => s + (sub.price || 0), 0).toLocaleString()}`, color: 'text-purple-400' },
+              ].map(stat => (
+                <div key={stat.label} className="bg-secondary/20 border border-border/30 rounded-2xl p-5 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">{stat.label}</p>
+                  <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="bg-secondary/20 border border-border/30 rounded-2xl p-6">
+              <h3 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
+                <Database className="h-5 w-5 text-purple-400" /> All Subscriptions
+              </h3>
+              {allSubscriptions.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No subscriptions found.</p>
+              ) : (
+                <div className="space-y-2">
+                  {allSubscriptions.map((sub: any) => (
+                    <div key={sub.id} className="p-3 rounded-xl bg-secondary/30 flex justify-between items-center">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{sub.plan} Plan</p>
+                        <p className="text-xs text-muted-foreground">User: {sub.user_id?.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">{new Date(sub.created_at).toLocaleDateString('en-IN')}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-purple-400">₹{sub.price?.toLocaleString()}</p>
+                        <span className={`text-[10px] ${sub.status === 'active' ? 'text-primary' : 'text-muted-foreground'}`}>{sub.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ─── SETTINGS TAB ─── */}
+        {activeTab === 'settings' && (
+          <motion.div variants={itemVariants} className="space-y-4 max-w-2xl">
+            {[
+              { icon: Database, title: 'Database Management', desc: 'View Supabase connection and table health', button: 'Manage' },
+              { icon: Lock, title: 'Security Settings', desc: 'Configure RLS policies and access controls', button: 'Configure' },
+              { icon: BarChart3, title: 'Analytics', desc: 'System performance metrics and usage stats', button: 'View' },
+              { icon: Settings, title: 'App Settings', desc: 'Configure application-level preferences', button: 'Edit' },
+            ].map(setting => (
+              <div key={setting.title} className="flex items-center justify-between p-4 rounded-2xl bg-secondary/20 border border-border/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-400/10 border border-purple-400/20 flex items-center justify-center">
+                    <setting.icon className="h-5 w-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">{setting.title}</p>
+                    <p className="text-xs text-muted-foreground">{setting.desc}</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="border-purple-400/30 text-purple-400 hover:bg-purple-400/10">
+                  {setting.button}
+                </Button>
+              </div>
+            ))}
           </motion.div>
         )}
       </motion.div>
     </div>
   );
 }
-
