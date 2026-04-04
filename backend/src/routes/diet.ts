@@ -47,7 +47,7 @@ router.post('/meals', authenticateToken, async (req: AuthRequest, res: Response)
 // Delete meal log
 router.delete('/meals/:id', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const userId = req.user!.id;
     
     await prisma.mealLog.delete({

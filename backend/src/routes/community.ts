@@ -46,7 +46,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res: Response): Pro
 // Get comments for a post
 router.get('/:id/comments', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { id: postId } = req.params;
+    const postId = req.params.id as string;
     const comments = await prisma.communityComment.findMany({
       where: { postId },
       orderBy: { createdAt: 'asc' },
@@ -65,7 +65,7 @@ router.get('/:id/comments', authenticateToken, async (req: AuthRequest, res: Res
 router.post('/:id/comments', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const { id: postId } = req.params;
+    const postId = req.params.id as string;
     const { content } = req.body;
     
     const comment = await prisma.communityComment.create({
@@ -86,7 +86,7 @@ router.post('/:id/comments', authenticateToken, async (req: AuthRequest, res: Re
 router.post('/:id/like', authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const { id: postId } = req.params;
+    const postId = req.params.id as string;
     
     const existingLike = await prisma.communityLike.findUnique({
       where: { postId_userId: { postId, userId } },
