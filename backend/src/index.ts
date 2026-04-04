@@ -45,6 +45,15 @@ app.use('/api/community', communityRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/workouts', workoutRoutes);
 
+// Global error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('SERVER_ERROR:', err);
+  res.status(500).json({ 
+    error: 'Internal server error', 
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong on the server'
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
