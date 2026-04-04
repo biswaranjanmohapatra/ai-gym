@@ -1,5 +1,7 @@
-// Local backend API utility
-const API_URL = 'http://localhost:5000/api';
+// Local/Environment backend API utility
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:5000/api'
+  : '/_/backend/api';
 
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token');
