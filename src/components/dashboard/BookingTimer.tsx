@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Timer, AlertTriangle, Bell } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -13,11 +13,11 @@ export default function BookingTimer() {
 
   useEffect(() => {
     if (user) {
-      supabase.from('trainer_bookings').select('*').eq('user_id', user.id).eq('status', 'active')
-        .order('booking_date', { ascending: true }).limit(1)
-        .then(({ data }) => {
+      fetchApi('/bookings?status=active')
+        .then(data => {
           if (data && data.length > 0) setActiveBooking(data[0]);
-        });
+        })
+        .catch(err => console.error('Failed to fetch active booking', err));
     }
   }, [user]);
 
@@ -38,7 +38,7 @@ export default function BookingTimer() {
   useEffect(() => {
     if (!activeBooking) return;
     const interval = setInterval(() => {
-      const endDateTime = new Date(`${activeBooking.booking_date}T${activeBooking.end_time}`);
+      const endDateTime = new Date(`${activeBooking.bookingDate}T${activeBooking.endTime}`);
       const now = new Date();
       const diff = endDateTime.getTime() - now.getTime();
       if (diff <= 0) {
@@ -113,7 +113,7 @@ export default function BookingTimer() {
         </div>
       )}
       <p className="text-xs text-muted-foreground text-center mt-3">
-        {new Date(activeBooking.booking_date).toLocaleDateString()} • {activeBooking.start_time} - {activeBooking.end_time}
+        {new Date(activeBooking.bookingDate).toLocaleDateString()} • {activeBooking.startTime} - {activeBooking.endTime}
       </p>
     </motion.div>
   );

@@ -5,7 +5,6 @@ import { Dumbbell, Mail, Lock, ArrowRight, Loader2, User, Eye, EyeOff } from 'lu
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const AVATARS = ['💪', '🏋️', '🧘', '🏃', '⚡', '🔥', '🥇', '🎯'];
@@ -23,15 +22,7 @@ export default function AuthPage() {
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        navigate('/dashboard');
-      }
-    };
-    checkSession();
-  }, [navigate]);
+
 
   if (user) {
     navigate('/dashboard');

@@ -1,25 +1,23 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Calendar, Clock, IndianRupee, CheckCircle, XCircle, Timer, AlertCircle, Loader2 } from 'lucide-react';
 
 interface Booking {
   id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
+  bookingDate: string; // Prisma camelCase
+  startTime: string;   // Prisma camelCase
+  endTime: string;     // Prisma camelCase
   status: string;
-  session_type: string;
-  payment_amount: number;
-  payment_status: string;
-  trainer_id: string;
-  created_at: string;
-  trainer_profiles?: {
+  sessionType: string; // Prisma camelCase
+  paymentAmount: number; // Prisma camelCase
+  paymentStatus: string; // Prisma camelCase
+  trainerId: string;     // Prisma camelCase
+  createdAt: string;     // Prisma camelCase
+  trainer?: {
     name: string;
-    specialty: string;
-    emoji: string;
   } | null;
 }
 
@@ -42,14 +40,12 @@ export default function BookingHistoryPage() {
 
   const loadBookings = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('trainer_bookings')
-      .select('*, trainer_profiles(name, specialty, emoji)')
-      .eq('user_id', user!.id)
-      .order('booking_date', { ascending: false })
-      .order('created_at', { ascending: false });
-
-    if (!error && data) setBookings(data as Booking[]);
+    try {
+      const data = await fetchApi('/bookings');
+      setBookings(data as Booking[]);
+    } catch (e) {
+      console.error(e);
+    }
     setLoading(false);
   };
 
@@ -107,8 +103,9 @@ export default function BookingHistoryPage() {
             {bookings.map((booking, i) => {
               const cfg = statusConfig[booking.status] || statusConfig.pending;
               const StatusIcon = cfg.icon;
-              const trainerName = booking.trainer_profiles?.name || 'Trainer';
-              const trainerEmoji = booking.trainer_profiles?.emoji || '💪';
+              const trainerName = booking.trainer?.name || 'Trainer';
+              // trainerEmoji isn't returned from simple include right now unless we added it, but let's default to emoji
+              const trainerEmoji = '💪';
 
               return (
                 <motion.div
@@ -125,7 +122,7 @@ export default function BookingHistoryPage() {
                       </div>
                       <div>
                         <p className="font-semibold text-foreground">{trainerName}</p>
-                        <p className="text-sm text-muted-foreground capitalize">{booking.session_type} Session</p>
+                        <p className="text-sm text-muted-foreground capitalize">{booking.sessionType} Session</p>
                       </div>
                     </div>
                     <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color}`}>
@@ -140,7 +137,7 @@ export default function BookingHistoryPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">Date</p>
                         <p className="text-foreground font-medium">
-                          {new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(booking.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
                       </div>
                     </div>
@@ -148,26 +145,26 @@ export default function BookingHistoryPage() {
                       <Clock className="h-4 w-4 text-primary" />
                       <div>
                         <p className="text-xs text-muted-foreground">Time</p>
-                        <p className="text-foreground font-medium">{booking.start_time}</p>
+                        <p className="text-foreground font-medium">{booking.startTime}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <IndianRupee className="h-4 w-4 text-primary" />
                       <div>
                         <p className="text-xs text-muted-foreground">Amount</p>
-                        <p className="text-foreground font-medium">₹{booking.payment_amount?.toLocaleString()}</p>
+                        <p className="text-foreground font-medium">₹{booking.paymentAmount?.toLocaleString()}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/10">
                     <span className="text-xs text-muted-foreground">
-                      Booked on {new Date(booking.created_at).toLocaleDateString('en-IN')}
+                      Booked on {new Date(booking.createdAt).toLocaleDateString('en-IN')}
                     </span>
                     <span className={`text-xs font-medium ${
-                      booking.payment_status === 'paid' ? 'text-green-400' : 'text-yellow-400'
+                      booking.paymentStatus === 'paid' ? 'text-green-400' : 'text-yellow-400'
                     }`}>
-                      Payment: {booking.payment_status}
+                      Payment: {booking.paymentStatus}
                     </span>
                   </div>
 

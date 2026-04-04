@@ -3,8 +3,8 @@ import { Target, TrendingUp } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 interface Props {
-  profile: { goal: string | null; weight_kg: number | null } | null;
-  workoutLogs: { calories_burned: number | null }[];
+  profile: { goal: string | null; weightKg: number | null } | null;
+  workoutLogs: { caloriesBurned: number | null }[];
 }
 
 const goalTargets: Record<string, { label: string; calorieTarget: number; workoutTarget: number }> = {
@@ -18,7 +18,7 @@ const goalTargets: Record<string, { label: string; calorieTarget: number; workou
 export default function FitnessGoals({ profile, workoutLogs }: Props) {
   const goalKey = profile?.goal || 'general_fitness';
   const target = goalTargets[goalKey] || goalTargets.general_fitness;
-  const totalCalories = workoutLogs.reduce((sum, l) => sum + (l.calories_burned || 0), 0);
+  const totalCalories = workoutLogs.reduce((sum, l) => sum + (l.caloriesBurned || 0), 0);
   const totalWorkouts = workoutLogs.length;
 
   const calProgress = Math.min(100, Math.round((totalCalories / target.calorieTarget) * 100));

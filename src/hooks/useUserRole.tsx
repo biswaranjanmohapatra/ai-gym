@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { fetchApi } from '@/lib/api';
 
 export function useUserRole() {
   const { user } = useAuth();
@@ -10,20 +10,17 @@ export function useUserRole() {
   useEffect(() => {
     if (!user) { setRole(null); setLoading(false); return; }
     
-    supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          // Prioritize admin > trainer > user
-          const roles = data.map(r => r.role);
-          if (roles.includes('admin')) setRole('admin');
-          else if (roles.includes('trainer')) setRole('trainer');
-          else setRole('user');
+    fetchApi('/users/profile')
+      .then((data) => {
+        if (data && data.role) {
+          setRole(data.role.toLowerCase() as 'user' | 'trainer' | 'admin');
         } else {
           setRole('user');
         }
+        setLoading(false);
+      })
+      .catch(() => {
+        setRole('user');
         setLoading(false);
       });
   }, [user]);

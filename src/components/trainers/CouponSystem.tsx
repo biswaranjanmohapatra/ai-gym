@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Ticket, Star, Check, X, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -36,10 +36,11 @@ export default function CouponSystem({ originalPrice, onDiscountApplied }: Coupo
 
   useEffect(() => {
     if (user) {
-      supabase.from('reward_points').select('points').eq('user_id', user.id)
-        .then(({ data }) => {
-          if (data) setTotalPoints(data.reduce((sum, p) => sum + p.points, 0));
-        });
+      fetchApi('/rewards')
+        .then((data) => {
+          if (data) setTotalPoints(data.reduce((sum: number, p: any) => sum + p.points, 0));
+        })
+        .catch(err => console.error('Error fetching points in CouponSystem', err));
     }
   }, [user]);
 

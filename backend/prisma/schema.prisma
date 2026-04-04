@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id               String            @id @default(uuid())
+  email            String            @unique
+  password         String
+  name             String            @default("")
+  role             String            @default("user") // "user", "trainer", "admin"
+  createdAt        DateTime          @default(now())
+  
+  trainerProfile   TrainerProfile?
+  profile          Profile?
+  workoutLogs      WorkoutLog[]
+
+  bookings         TrainerBooking[]
+  payments         Payment[]
+  subscriptions    Subscription[]
+  mealLogs         MealLog[]
+  waterLogs        WaterLog[]
+  communityPosts   CommunityPost[]
+  communityLikes   CommunityLike[]
+  communityComments CommunityComment[]
+  rewardPoints     RewardPoint[]
+}
+
+model Profile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String?
+  age              Int?
+  gender           String?
+  heightCm         Float?
+  weightKg         Float?
+  goal             String?
+  bmi              Float?
+  activityLevel    String?
+  premiumUntil     DateTime?
+  updatedAt        DateTime @updatedAt
+}
+
+model WorkoutLog {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutName      String
+  muscleGroup      String?
+  durationMinutes  Int?
+  caloriesBurned   Int?
+  completedAt      DateTime @default(now())
+}
+
+model MealLog {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealName         String
+  calories         Int?
+  protein          Float?
+  carbs            Float?
+  fat              Float?
+  mealType         String? // breakfast, lunch, dinner, snack
+  date             DateTime @default(now())
+}
+
+model WaterLog {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountMl         Int
+  date             DateTime @default(now())
+}
+
+model CommunityPost {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content          String
+  postType         String   @default("general") // general, achievement, question
+  createdAt        DateTime @default(now())
+  
+  likes            CommunityLike[]
+  comments         CommunityComment[]
+}
+
+model CommunityLike {
+  id               String   @id @default(uuid())
+  postId           String
+  post             CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model CommunityComment {
+  id               String   @id @default(uuid())
+  postId           String
+  post             CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content          String
+  createdAt        DateTime @default(now())
+}
+
+model RewardPoint {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points           Int
+  description      String
+  earnedAt         DateTime @default(now())
+}
+
+model TrainerProfile {
+  id               String   @id @default(uuid())
+  userId           String?  @unique
+  user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  specialty        String?
+  bio              String?
+  experience       String?
+  rating           Float    @default(4.5)
+  reviewsCount     Int      @default(0)
+  pricePerSession  Int      @default(500)
+  emoji            String   @default("💪")
+  certifications   String   @default("[]") // Stored as JSON string
+  specializations  String   @default("[]") // Stored as JSON string
+  availability     String   @default("[]") // Stored as JSON string
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  bookings         TrainerBooking[]
+  payments         Payment[]
+  timeSlots        TrainerTimeSlot[]
+}
+
+model TrainerTimeSlot {
+  id           String         @id @default(uuid())
+  trainerId    String
+  trainer      TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  dayOfWeek    Int // 0-6
+  startTime    String // HH:MM
+  endTime      String // HH:MM
+  isAvailable  Boolean        @default(true)
+}
+
+model TrainerBooking {
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainerId      String
+  trainer        TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  bookingDate    DateTime
+  startTime      String         @default("09:00:00") // Time as string HH:MM:SS
+  endTime        String         @default("10:00:00")
+  status         String         @default("pending") // pending, approved, active, completed, cancelled
+  sessionType    String         @default("offline") // online, offline
+  paymentAmount  Int            @default(0)
+  paymentStatus  String         @default("pending") // pending, paid, refunded, cancelled
+  createdAt      DateTime       @default(now())
+}
+
+model Payment {
+  id         String          @id @default(uuid())
+  userId     String
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainerId  String?
+  trainer    TrainerProfile? @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  amount     Int             @default(0)
+  status     String          @default("paid") // paid, pending, refunded
+  type       String          @default("trainer") // trainer, subscription
+  date       DateTime        @default(now())
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      String
+  price     Int      @default(0)
+  status    String   @default("active") // active, cancelled, expired
+  createdAt DateTime @default(now())
+}

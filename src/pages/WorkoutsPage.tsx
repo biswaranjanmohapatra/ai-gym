@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { Dumbbell, Clock, Flame, ChevronDown, ChevronUp, Check, Star, Plus, Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -95,31 +95,38 @@ export default function WorkoutsPage() {
   const logWorkout = async (workout: typeof workoutPlans.beginner[0]) => {
     if (!user) { toast.error('Please sign in to log workouts'); navigate('/user-login'); return; }
     
-    // Log workout
-    const { error } = await supabase.from('workout_logs').insert({
-      user_id: user.id,
-      workout_name: workout.name,
-      muscle_group: workout.muscle,
-      duration_minutes: workout.duration,
-      calories_burned: workout.calories,
-    });
-    if (error) { toast.error('Failed to log workout'); return; }
+    try {
+      // Log workout
+      await fetchApi('/workouts', {
+        method: 'POST',
+        body: JSON.stringify({
+          workoutName: workout.name,
+          muscleGroup: workout.muscle,
+          durationMinutes: workout.duration,
+          caloriesBurned: workout.calories,
+        }),
+      });
 
-    // Award reward points
-    await supabase.from('reward_points').insert({
-      user_id: user.id,
-      points: workout.points,
-      reason: `Completed: ${workout.name} (${level})`,
-    });
+      // Award reward points
+      await fetchApi('/rewards', {
+        method: 'POST',
+        body: JSON.stringify({
+          points: workout.points,
+          description: `Completed: ${workout.name} (${level})`,
+        }),
+      });
 
-    toast.success(
-      <div className="flex items-center gap-2">
-        <span>{workout.name} logged! 🔥</span>
-        <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'hsl(45 100% 55%)' }}>
-          +{workout.points} pts
-        </span>
-      </div>
-    );
+      toast.success(
+        <div className="flex items-center gap-2">
+          <span>{workout.name} logged! 🔥</span>
+          <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'hsl(45 100% 55%)' }}>
+            +{workout.points} pts
+          </span>
+        </div>
+      );
+    } catch {
+      toast.error('Failed to log workout');
+    }
   };
 
   return (

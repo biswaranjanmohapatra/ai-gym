@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Star, Gift, ArrowRight } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,10 +12,11 @@ export default function RewardPointsCard() {
 
   useEffect(() => {
     if (user) {
-      supabase.from('reward_points').select('points').eq('user_id', user.id)
-        .then(({ data }) => {
-          if (data) setTotalPoints(data.reduce((sum, p) => sum + p.points, 0));
-        });
+      fetchApi('/rewards')
+        .then((data) => {
+          if (data) setTotalPoints(data.reduce((sum: number, p: any) => sum + p.points, 0));
+        })
+        .catch(err => console.error('Error fetching points in RewardPointsCard', err));
     }
   }, [user]);
 

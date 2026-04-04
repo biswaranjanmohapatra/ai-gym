@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Droplets, Plus, Minus } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface WaterLog {
   id: string;
-  amount_ml: number;
-  logged_at: string;
+  amountMl: number;
+  date: string;
 }
 
 interface WaterTrackerProps {
@@ -21,24 +21,33 @@ const DAILY_GOAL_ML = 3000;
 
 export default function WaterTracker({ logs, onRefresh }: WaterTrackerProps) {
   const { user } = useAuth();
-  const todayLogs = logs.filter(l => new Date(l.logged_at).toDateString() === new Date().toDateString());
-  const totalMl = todayLogs.reduce((s, l) => s + l.amount_ml, 0);
+  const todayLogs = logs.filter(l => new Date(l.date).toDateString() === new Date().toDateString());
+  const totalMl = todayLogs.reduce((s, l) => s + l.amountMl, 0);
   const progress = Math.min((totalMl / DAILY_GOAL_ML) * 100, 100);
   const glasses = Math.floor(totalMl / 250);
 
   const addWater = async (amount: number) => {
     if (!user) return;
-    const { error } = await supabase.from('water_logs').insert({ user_id: user.id, amount_ml: amount });
-    if (error) toast.error('Failed to log water');
-    else { toast.success(`+${amount}ml 💧`); onRefresh(); }
+    try {
+      await fetchApi('/diet/water', {
+        method: 'POST',
+        body: JSON.stringify({ amountMl: amount }),
+      });
+      toast.success(`+${amount}ml 💧`);
+      onRefresh();
+    } catch {
+      toast.error('Failed to log water');
+    }
   };
 
   const removeLastGlass = async () => {
     if (todayLogs.length === 0) return;
-    const last = todayLogs[todayLogs.length - 1];
-    const { error } = await supabase.from('water_logs').delete().eq('id', last.id);
-    if (error) toast.error('Failed to remove');
-    else { onRefresh(); }
+    try {
+      await fetchApi('/diet/water/last', { method: 'DELETE' });
+      onRefresh();
+    } catch {
+      toast.error('Failed to remove');
+    }
   };
 
   return (

@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 
 interface Props {
-  workoutLogs: { completed_at: string }[];
+  workoutLogs: { completedAt: string }[];
   totalCalories: number;
 }
 

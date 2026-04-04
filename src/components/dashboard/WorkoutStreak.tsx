@@ -2,12 +2,12 @@ import { motion } from 'framer-motion';
 import { Flame, Zap } from 'lucide-react';
 
 interface WorkoutLog {
-  completed_at: string;
+  completedAt: string;
 }
 
 function calculateStreak(logs: WorkoutLog[]): number {
   if (logs.length === 0) return 0;
-  const dates = [...new Set(logs.map(l => new Date(l.completed_at).toDateString()))].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  const dates = [...new Set(logs.map(l => new Date(l.completedAt).toDateString()))].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
   let streak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -30,7 +30,7 @@ function getLast7Days(logs: WorkoutLog[]): boolean[] {
   const result: boolean[] = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dateSet = new Set(logs.map(l => new Date(l.completed_at).toDateString()));
+  const dateSet = new Set(logs.map(l => new Date(l.completedAt).toDateString()));
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);

@@ -4,7 +4,7 @@ import { X, Send, Loader2, Bot, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ReactMarkdown from 'react-markdown';
-import { supabase } from '@/lib/supabase';
+import { fetchApi } from '@/lib/api';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -13,7 +13,7 @@ interface Message {
 
 interface AIChatbotProps {
   onClose: () => void;
-  profile: { name: string | null; age: number | null; gender: string | null; height_cm: number | null; weight_kg: number | null; goal: string | null; bmi: number | null; } | null;
+  profile: { name: string | null; age: number | null; gender: string | null; heightCm: number | null; weightKg: number | null; goal: string | null; bmi: number | null; } | null;
 }
 
 export default function AIChatbot({ onClose, profile }: AIChatbotProps) {
@@ -33,17 +33,17 @@ export default function AIChatbot({ onClose, profile }: AIChatbotProps) {
     setInput('');
     setLoading(true);
 
-    const profileContext = profile ? `User profile: Name: ${profile.name || 'Unknown'}, Age: ${profile.age || 'Unknown'}, Gender: ${profile.gender || 'Unknown'}, Height: ${profile.height_cm || 'Unknown'}cm, Weight: ${profile.weight_kg || 'Unknown'}kg, BMI: ${profile.bmi || 'Unknown'}, Goal: ${profile.goal || 'General fitness'}.` : '';
+    const profileContext = profile ? `User profile: Name: ${profile.name || 'Unknown'}, Age: ${profile.age || 'Unknown'}, Gender: ${profile.gender || 'Unknown'}, Height: ${profile.heightCm || 'Unknown'}cm, Weight: ${profile.weightKg || 'Unknown'}kg, BMI: ${profile.bmi || 'Unknown'}, Goal: ${profile.goal || 'General fitness'}.` : '';
 
     let assistantContent = '';
     const allMessages = [...messages, userMsg];
 
     try {
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-fitness-chat`, {
+      const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({ messages: allMessages, profileContext }),
       });

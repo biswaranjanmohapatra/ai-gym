@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { CreditCard, IndianRupee } from 'lucide-react';
 
 interface Payment {
   id: string;
-  user_id: string;
-  trainer_id: string;
+  userId: string; // Prisma camelCase
+  trainerId: string;
   amount: number;
   date: string;
   status: string;
@@ -18,14 +18,11 @@ export default function UserPayments() {
 
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from('payments' as any)
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .then(({ data }) => {
-        if (data) setPayments(data as Payment[]);
-      });
+    fetchApi('/payments')
+      .then(data => {
+        if (data) setPayments(data);
+      })
+      .catch(err => console.error('Failed to fetch payments', err));
   }, [user]);
 
   if (!user || payments.length === 0) return null;

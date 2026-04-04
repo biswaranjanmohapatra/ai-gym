@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -25,21 +25,21 @@ interface Profile {
   name: string | null;
   age: number | null;
   gender: string | null;
-  height_cm: number | null;
-  weight_kg: number | null;
+  heightCm: number | null; // Prisma camelCase
+  weightKg: number | null;
   goal: string | null;
   bmi: number | null;
-  activity_level: string | null;
-  premium_until?: string | null;
+  activityLevel: string | null;
+  premiumUntil?: string | null;
 }
 
 interface WorkoutLog {
   id: string;
-  workout_name: string;
-  muscle_group: string | null;
-  duration_minutes: number | null;
-  calories_burned: number | null;
-  completed_at: string;
+  workoutName: string; // Prisma camelCase
+  muscleGroup: string | null;
+  durationMinutes: number | null;
+  caloriesBurned: number | null;
+  completedAt: string;
 }
 
 const containerVariants = {
@@ -64,28 +64,34 @@ export default function Dashboard() {
   }, [user]);
 
   const fetchProfile = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('user_id', user!.id).single();
-    if (data) setProfile(data);
+    try {
+      const data = await fetchApi('/users/me');
+      if (data) {
+        if (data.profile) setProfile(data.profile);
+        if (data.workoutLogs) setWorkoutLogs(data.workoutLogs);
+      }
+    } catch (e) {
+      console.error('Failed to fetch user dashboard data', e);
+    }
   };
 
   const fetchWorkoutLogs = async () => {
-    const { data } = await supabase.from('workout_logs').select('*').eq('user_id', user!.id).order('completed_at', { ascending: false }).limit(30);
-    if (data) setWorkoutLogs(data);
+    // Handled in fetchProfile combined fetch
   };
 
-  const totalCalories = workoutLogs.reduce((sum, l) => sum + (l.calories_burned || 0), 0);
+  const totalCalories = workoutLogs.reduce((sum, l) => sum + (l.caloriesBurned || 0), 0);
   const totalWorkouts = workoutLogs.length;
-  const totalMinutes = workoutLogs.reduce((sum, l) => sum + (l.duration_minutes || 0), 0);
+  const totalMinutes = workoutLogs.reduce((sum, l) => sum + (l.durationMinutes || 0), 0);
   const avgCalories = totalWorkouts > 0 ? Math.round(totalCalories / totalWorkouts) : 0;
 
   const caloriesChartData = workoutLogs.slice(0, 10).reverse().map(l => ({
-    date: new Date(l.completed_at).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-    calories: l.calories_burned || 0,
-    duration: l.duration_minutes || 0,
+    date: new Date(l.completedAt).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+    calories: l.caloriesBurned || 0,
+    duration: l.durationMinutes || 0,
   }));
 
   const muscleGroups = workoutLogs.reduce((acc, l) => {
-    const group = l.muscle_group || 'Other';
+    const group = l.muscleGroup || 'Other';
     acc[group] = (acc[group] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -240,12 +246,12 @@ export default function Dashboard() {
               {workoutLogs.slice(0, 5).map(log => (
                 <motion.div key={log.id} whileHover={{ x: 4 }} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 transition-colors hover:bg-secondary/70">
                   <div>
-                    <p className="text-foreground font-medium">{log.workout_name}</p>
-                    <p className="text-xs text-muted-foreground">{log.muscle_group} • {log.duration_minutes} min</p>
+                    <p className="text-foreground font-medium">{log.workoutName}</p>
+                    <p className="text-xs text-muted-foreground">{log.muscleGroup} • {log.durationMinutes} min</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-primary font-medium">{log.calories_burned} cal</p>
-                    <p className="text-xs text-muted-foreground">{new Date(log.completed_at).toLocaleDateString()}</p>
+                    <p className="text-primary font-medium">{log.caloriesBurned} cal</p>
+                    <p className="text-xs text-muted-foreground">{new Date(log.completedAt).toLocaleDateString()}</p>
                   </div>
                 </motion.div>
               ))}

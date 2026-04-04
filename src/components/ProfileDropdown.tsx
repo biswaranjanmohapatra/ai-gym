@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { User, Brain, Dumbbell, Apple, Crown, Settings, LogOut, ChevronDown, Calendar, Target, Trophy, Star, Users, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useUserRole } from '@/hooks/useUserRole';
 
 const AVATARS = ['💪', '🏋️', '🧘', '🏃', '⚡', '🔥', '🥇', '🎯'];
@@ -19,9 +19,15 @@ export default function ProfileDropdown() {
 
   useEffect(() => {
     if (user) {
-      supabase.from('profiles').select('name').eq('user_id', user.id).single().then(({ data }) => {
-        if (data?.name) setProfileName(data.name);
-      });
+      if (user.name) {
+        setProfileName(user.name);
+      } else {
+        fetchApi('/users/profile')
+          .then((data) => {
+            if (data?.name) setProfileName(data.name);
+          })
+          .catch(err => console.error('Error fetching profile in dropdown', err));
+      }
       const saved = localStorage.getItem(`avatar_${user.id}`);
       if (saved) setAvatar(saved);
     }

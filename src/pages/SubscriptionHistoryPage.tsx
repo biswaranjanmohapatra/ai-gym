@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { Crown, Star, Zap, Loader2, Calendar, IndianRupee } from 'lucide-react';
 
 interface Subscription {
   id: string;
-  user_id: string;
+  userId: string;
   plan: string;
   price: number;
   status: string;
-  created_at: string;
+  createdAt: string;
 }
 
 const planIcons: Record<string, any> = {
@@ -36,13 +36,14 @@ export default function SubscriptionHistoryPage() {
 
   const loadSubscriptions = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('subscriptions' as any)
-      .select('*')
-      .eq('user_id', user!.id)
-      .order('created_at', { ascending: false });
-    setSubscriptions((data as Subscription[]) || []);
-    setLoading(false);
+    try {
+      const data = await fetchApi('/subscriptions');
+      setSubscriptions(data || []);
+    } catch (err) {
+      console.error('Fetch subscriptions error', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,7 +98,7 @@ export default function SubscriptionHistoryPage() {
                       <p className={`font-bold text-lg ${color}`}>{sub.plan} Plan</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                         <Calendar className="h-3 w-3" />
-                        {new Date(sub.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {new Date(sub.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </div>
                     </div>
                   </div>

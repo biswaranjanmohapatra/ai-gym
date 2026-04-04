@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Check, Zap, Crown, Star, Loader2, IndianRupee } from 'lucide-react';
@@ -85,40 +85,31 @@ export default function SubscriptionsPage() {
     setLoadingPlan(plan.id);
     setSuccess(null);
 
-    // Safety: auto-clear spinner after 10s in case of network hang
     const safetyTimer = setTimeout(() => {
       setLoadingPlan(null);
       toast.error('Request timed out. Please try again.');
     }, 10000);
 
     try {
-      // Insert subscription
-      const { error: subError } = await supabase.from('subscriptions' as any).insert({
-        user_id: user.id,
-        plan: plan.name,
-        price: plan.priceValue,
-        status: 'active',
+      await fetchApi('/subscriptions', {
+        method: 'POST',
+        body: JSON.stringify({
+          plan: plan.name,
+          price: plan.priceValue,
+        }),
       });
 
       clearTimeout(safetyTimer);
 
-      if (subError) {
-        toast.error(`Subscription failed: ${subError.message}`);
-        setLoadingPlan(null);
-        return;
-      }
-
       // Insert payment record (best effort)
-      await supabase.from('payments' as any).insert({
-        user_id: user.id,
-        trainer_id: null,
-        amount: plan.priceValue,
-        date: new Date().toISOString(),
-        status: 'paid',
-        type: 'subscription',
-      }).then(({ error }) => {
-        if (error) console.warn('Payment record insert failed:', error.message);
-      });
+      fetchApi('/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          amount: plan.priceValue,
+          status: 'paid',
+          type: 'subscription',
+        }),
+      }).catch(err => console.warn('Payment record insert failed:', err.message));
 
       setLoadingPlan(null);
       setSuccess(plan.id);

@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, CreditCard, CheckCircle, XCircle, Timer, ChevronDown } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
 interface Booking {
   id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
+  bookingDate: string; // Prisma camelCase
+  startTime: string;
+  endTime: string;
   status: string;
-  session_type: string;
-  payment_amount: number;
-  payment_status: string;
-  trainer_id: string;
-  created_at: string;
-  trainer_profiles?: {
+  sessionType: string;
+  paymentAmount: number;
+  paymentStatus: string;
+  trainerId: string;
+  createdAt: string;
+  trainer?: {
     name: string;
-    price_per_session: number | null;
   } | null;
 }
 
@@ -34,16 +33,11 @@ export default function BookingHistory() {
 
   useEffect(() => {
     if (user) {
-      supabase
-        .from('trainer_bookings')
-        .select('*, trainer_profiles(name, price_per_session)')
-        .eq('user_id', user.id)
-        .order('booking_date', { ascending: false })
-        .limit(20)
-        .then(({ data }) => {
-          if (!data) return;
-          setBookings(data as Booking[]);
-        });
+      fetchApi('/bookings')
+        .then(data => {
+          if (data) setBookings(data);
+        })
+        .catch(err => console.error('Failed to fetch bookings', err));
     }
   }, [user]);
 
@@ -72,16 +66,16 @@ export default function BookingHistory() {
                   </div>
                   <div>
                     <p className="text-foreground text-sm font-medium">
-                      {new Date(booking.booking_date).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {new Date(booking.bookingDate).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Trainer: {booking.trainer_profiles?.name || booking.trainer_id} • {booking.session_type}
+                      Trainer: {booking.trainer?.name || 'Trainer'} • {booking.sessionType}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-primary text-sm font-medium">₹{booking.payment_amount}</p>
+                    <p className="text-primary text-sm font-medium">₹{booking.paymentAmount}</p>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
                       {booking.status}
                     </span>
@@ -102,10 +96,10 @@ export default function BookingHistory() {
                       {/* Timeline */}
                       <div className="space-y-2">
                         {[
-                          { label: 'Booking Created', time: new Date(booking.created_at).toLocaleString(), done: true },
-                          { label: 'Payment Completed', time: booking.payment_status === 'paid' ? 'Paid' : 'Pending', done: booking.payment_status === 'paid' },
-                          { label: 'Session Started', time: booking.start_time, done: booking.status !== 'cancelled' },
-                          { label: 'Session Completed', time: booking.end_time, done: booking.status === 'completed' },
+                          { label: 'Booking Created', time: new Date(booking.createdAt).toLocaleString(), done: true },
+                          { label: 'Payment Completed', time: booking.paymentStatus === 'paid' ? 'Paid' : 'Pending', done: booking.paymentStatus === 'paid' },
+                          { label: 'Session Started', time: booking.startTime, done: booking.status !== 'cancelled' },
+                          { label: 'Session Completed', time: booking.endTime, done: booking.status === 'completed' },
                         ].map((step, i) => (
                           <div key={i} className="flex items-center gap-3">
                             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${step.done ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
@@ -117,8 +111,8 @@ export default function BookingHistory() {
                         ))}
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {booking.session_type}</span>
-                        <span className="flex items-center gap-1"><CreditCard className="h-3 w-3" /> {booking.payment_status}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {booking.sessionType}</span>
+                        <span className="flex items-center gap-1"><CreditCard className="h-3 w-3" /> {booking.paymentStatus}</span>
                       </div>
                     </div>
                   </motion.div>

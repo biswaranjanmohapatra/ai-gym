@@ -15,7 +15,7 @@ export default function AdminAuthPage() {
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, signOut, user } = useAuth();
   const navigate = useNavigate();
 
   if (user) {
@@ -36,14 +36,15 @@ export default function AdminAuthPage() {
         const resolvedRole = await signIn(email, password);
         if (resolvedRole !== 'admin') {
           toast.error('This account is not registered as an admin.');
-          await supabase.auth.signOut();
+          await signOut();
           return;
         }
         toast.success('Welcome back, Administrator!');
         navigate('/admin-dashboard');
       } else {
         await signUp(email, password, 'admin', name.trim());
-        toast.success('Admin account created! Please verify your email before logging in.');
+        toast.success('Admin account created successfully! You can now log in.');
+        setIsLogin(true);
       }
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong');

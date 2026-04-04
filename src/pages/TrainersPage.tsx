@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { Star, Clock, Award, Calendar, X, Loader2, CheckCircle, IndianRupee, Dumbbell, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -78,13 +78,8 @@ export default function TrainersPage() {
   const loadTrainers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('trainer_profiles')
-        .select('*')
-        .eq('is_active', true)
-        .order('rating', { ascending: false });
-
-      if (!error && data && data.length > 0) {
+      const data = await fetchApi('/trainers');
+      if (data && data.length > 0) {
         setTrainers(
           data.map((t: any) => ({
             id: t.id,
@@ -92,21 +87,18 @@ export default function TrainersPage() {
             specialty: t.specialty || 'Fitness Coach',
             experience: t.experience || 'N/A',
             rating: t.rating || 4.7,
-            reviews: t.reviews_count || 0,
-            price: t.price_per_session || 500,
+            reviews: t.reviewsCount || 0, // Prisma camelCase
+            price: t.pricePerSession || 500, // Prisma camelCase
             emoji: t.emoji || '💪',
             bio: t.bio || 'Elite certified trainer.',
             certifications: t.certifications || [],
             specializations: t.specializations || [],
             availability: t.availability || [],
-            is_active: t.is_active,
+            is_active: t.isActive, // Prisma camelCase
           }))
         );
       } else {
-        // Use static fallback with fake IDs for display only
-        setTrainers(
-          staticDemoTrainers.map((t, i) => ({ ...t, id: `demo-${i}` }))
-        );
+        setTrainers(staticDemoTrainers.map((t, i) => ({ ...t, id: `demo-${i}` })));
       }
     } catch {
       setTrainers(staticDemoTrainers.map((t, i) => ({ ...t, id: `demo-${i}` })));
@@ -132,24 +124,16 @@ export default function TrainersPage() {
     setBookingState('processing');
 
     try {
-      const { error } = await supabase.from('trainer_bookings').insert({
-        user_id: user.id,
-        trainer_id: selectedTrainer.id,
-        booking_date: selectedDate,
-        start_time: selectedTime,
-        end_time: selectedTime,
-        session_type: sessionType,
-        status: 'pending',
-        payment_amount: selectedTrainer.price,
-        payment_status: 'pending',
-      } as any);
-
-      if (error) {
-        console.error('Booking error:', error);
-        toast.error(`Booking failed: ${error.message}`);
-        setBookingState('idle');
-        return;
-      }
+      await fetchApi('/bookings', {
+        method: 'POST',
+        body: JSON.stringify({
+          trainerId: selectedTrainer.id,
+          bookingDate: selectedDate,
+          startTime: selectedTime,
+          endTime: selectedTime,
+          sessionType,
+        }),
+      });
 
       setBookingState('success');
       toast.success('Session booked! Awaiting trainer confirmation.');

@@ -3,32 +3,33 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Loader2, Beef, Leaf } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchApi } from '@/lib/api';
 
 interface Profile {
   age: number | null;
   gender: string | null;
-  height_cm: number | null;
-  weight_kg: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
   goal: string | null;
   bmi: number | null;
-  activity_level?: string | null;
+  activityLevel?: string | null;
 }
 
 interface Meal {
-  meal_type: string;
+  mealType: string;
   name: string;
   calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
+  protein: number;
+  carbs: number;
+  fat: number;
   items: string[];
 }
 
 interface MealPlanData {
-  daily_calories: number;
-  daily_protein_g: number;
-  daily_carbs_g: number;
-  daily_fat_g: number;
+  dailyCalories: number;
+  dailyProtein: number;
+  dailyCarbs: number;
+  dailyFat: number;
   meals: Meal[];
   tips: string[];
 }
@@ -48,27 +49,19 @@ export default function AIMealPlan({ profile, onTargetUpdate }: AIMealPlanProps)
     setLoading(true);
 
     try {
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-diet-plan`, {
+      const data = await fetchApi('/ai/diet-plan', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
         body: JSON.stringify({ profile, dietType }),
       });
 
-      if (resp.status === 429) { toast.error('Rate limited. Try again in a moment.'); return; }
-      if (resp.status === 402) { toast.error('AI usage limit reached.'); return; }
-      if (!resp.ok) throw new Error('Failed to generate plan');
-
-      const data = await resp.json();
       if (data.error) throw new Error(data.error);
+      
       setPlan(data);
       onTargetUpdate?.({
-        calories: data.daily_calories,
-        protein: data.daily_protein_g,
-        carbs: data.daily_carbs_g,
-        fat: data.daily_fat_g,
+        calories: data.dailyCalories,
+        protein: data.dailyProtein,
+        carbs: data.dailyCarbs,
+        fat: data.dailyFat,
       });
       toast.success('AI meal plan generated! 🍽️');
     } catch (err) {
@@ -110,20 +103,20 @@ export default function AIMealPlan({ profile, onTargetUpdate }: AIMealPlanProps)
       {plan && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
           <div className="grid grid-cols-4 gap-2 text-center p-3 rounded-lg bg-secondary/50">
-            <div><p className="font-display text-lg text-primary">{plan.daily_calories}</p><p className="text-xs text-muted-foreground">kcal</p></div>
-            <div><p className="font-display text-lg text-accent">{plan.daily_protein_g}g</p><p className="text-xs text-muted-foreground">protein</p></div>
-            <div><p className="font-display text-lg text-yellow-400">{plan.daily_carbs_g}g</p><p className="text-xs text-muted-foreground">carbs</p></div>
-            <div><p className="font-display text-lg text-orange-400">{plan.daily_fat_g}g</p><p className="text-xs text-muted-foreground">fat</p></div>
+            <div><p className="font-display text-lg text-primary">{plan.dailyCalories}</p><p className="text-xs text-muted-foreground">kcal</p></div>
+            <div><p className="font-display text-lg text-accent">{plan.dailyProtein}g</p><p className="text-xs text-muted-foreground">protein</p></div>
+            <div><p className="font-display text-lg text-yellow-400">{plan.dailyCarbs}g</p><p className="text-xs text-muted-foreground">carbs</p></div>
+            <div><p className="font-display text-lg text-orange-400">{plan.dailyFat}g</p><p className="text-xs text-muted-foreground">fat</p></div>
           </div>
 
           {plan.meals.map((meal, i) => (
             <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="p-4 rounded-lg bg-secondary/50">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-xs text-primary tracking-widest uppercase font-medium">{meal.meal_type}</span>
+                <span className="text-xs text-primary tracking-widest uppercase font-medium">{meal.mealType}</span>
                 <span className="text-xs text-muted-foreground">{meal.calories} kcal</span>
               </div>
               <h4 className="font-display text-lg text-foreground mb-1">{meal.name}</h4>
-              <p className="text-xs text-muted-foreground mb-2">P:{meal.protein_g}g • C:{meal.carbs_g}g • F:{meal.fat_g}g</p>
+              <p className="text-xs text-muted-foreground mb-2">P:{meal.protein}g • C:{meal.carbs}g • F:{meal.fat}g</p>
               <ul className="space-y-1">
                 {meal.items.map((item, j) => (
                   <li key={j} className="text-xs text-muted-foreground flex items-center gap-1.5">

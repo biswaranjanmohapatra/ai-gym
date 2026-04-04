@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,23 +14,26 @@ import { useSearchParams } from 'react-router-dom';
 
 interface Booking {
   id: string;
-  booking_date: string;
-  start_time: string;
-  end_time: string;
+  bookingDate: string; // Prisma camelCase
+  startTime: string;
+  endTime: string;
   status: string;
-  session_type: string;
-  payment_amount: number;
-  payment_status: string;
-  user_id: string;
-  created_at: string;
+  sessionType: string;
+  paymentAmount: number;
+  paymentStatus: string;
+  userId: string;
+  createdAt: string;
+  user?: {
+    name: string;
+  };
 }
 
 interface TimeSlot {
   id: string;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  is_available: boolean;
+  dayOfWeek: number; // Prisma camelCase
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -75,39 +78,17 @@ export default function TrainerDashboard() {
   };
 
   const fetchTrainerProfile = async () => {
-    const { data: tp } = await supabase
-      .from('trainer_profiles')
-      .select('*')
-      .eq('user_id', user!.id)
-      .maybeSingle();
-
-    if (tp) {
-      setTrainerProfile(tp);
-      setSessionPrice(tp.price_per_session || 500);
-
-      // Fetch bookings
-      const { data: bk } = await supabase
-        .from('trainer_bookings')
-        .select('*')
-        .eq('trainer_id', tp.id)
-        .order('booking_date', { ascending: false });
-      if (bk) setBookings(bk);
-
-      // Fetch payments
-      const { data: py } = await supabase
-        .from('payments' as any)
-        .select('*')
-        .eq('trainer_id', tp.id)
-        .order('date', { ascending: false });
-      if (py) setPayments(py as any[]);
-
-      // Fetch time slots
-      const { data: ts } = await supabase
-        .from('trainer_time_slots')
-        .select('*')
-        .eq('trainer_id', tp.id)
-        .order('day_of_week');
-      if (ts) setTimeSlots(ts);
+    try {
+      const tp = await fetchApi('/trainers/me');
+      if (tp) {
+        setTrainerProfile(tp);
+        setSessionPrice(tp.pricePerSession || 500);
+        if (tp.bookings) setBookings(tp.bookings);
+        if (tp.payments) setPayments(tp.payments);
+        if (tp.timeSlots) setTimeSlots(tp.timeSlots);
+      }
+    } catch (e) {
+      console.error('Failed to fetch trainer profile', e);
     }
   };
 
@@ -115,23 +96,20 @@ export default function TrainerDashboard() {
     if (!setupName.trim()) { toast.error('Please enter your name'); return; }
     setCreatingProfile(true);
     try {
-      const { error } = await supabase.from('trainer_profiles').insert({
-        user_id: user!.id,
-        name: setupName.trim(),
-        specialty: setupSpecialty.trim() || 'Fitness Coach',
-        experience: setupExp,
-        bio: setupBio.trim() || `${setupName} — Professional fitness trainer.`,
-        price_per_session: 500,
-        is_active: true,
-        certifications: [],
-        specializations: [],
-        availability: [],
-        emoji: '💪',
-      } as any);
+      await fetchApi('/trainers/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: setupName.trim(),
+          specialty: setupSpecialty.trim(),
+          experience: setupExp,
+          bio: setupBio.trim(),
+        }),
+      });
 
-      if (error) { toast.error('Failed to create profile: ' + error.message); return; }
       toast.success('Trainer profile created!');
       await fetchTrainerProfile();
+    } catch (err: any) {
+      toast.error('Failed to create profile: ' + err.message);
     } finally {
       setCreatingProfile(false);
     }
@@ -141,61 +119,63 @@ export default function TrainerDashboard() {
     if (!user || !trainerProfile) return;
     if (sessionPrice < 0) { toast.error('Price cannot be negative'); return; }
     setUpdatingPrice(true);
-    const { error } = await supabase
-      .from('trainer_profiles')
-      .update({ price_per_session: sessionPrice } as any)
-      .eq('user_id', user.id);
-    setUpdatingPrice(false);
-    if (error) { toast.error('Failed to update price'); return; }
-    toast.success('Session price updated! Users will now see ₹' + sessionPrice.toLocaleString());
-    fetchTrainerProfile();
+    try {
+      await fetchApi('/trainers/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          pricePerSession: sessionPrice
+        }),
+      });
+      toast.success('Session price updated! Users will now see ₹' + sessionPrice.toLocaleString());
+      fetchTrainerProfile();
+    } catch {
+      toast.error('Failed to update price');
+    } finally {
+      setUpdatingPrice(false);
+    }
   };
 
   const updateBookingStatus = async (booking: Booking, newStatus: 'approved' | 'cancelled') => {
     if (!trainerProfile) return;
 
-    const { error } = await supabase
-      .from('trainer_bookings')
-      .update({
-        status: newStatus,
-        payment_status: newStatus === 'approved' ? 'paid' : 'cancelled',
-      } as any)
-      .eq('id', booking.id);
-
-    if (error) { toast.error('Failed to update booking'); return; }
-
-    // Insert payment record when approved
-    if (newStatus === 'approved' && booking.payment_amount > 0) {
-      await supabase.from('payments' as any).insert({
-        user_id: booking.user_id,
-        trainer_id: trainerProfile.id,
-        amount: booking.payment_amount,
-        date: new Date().toISOString(),
-        status: 'paid',
-        type: 'trainer',
+    try {
+      await fetchApi(`/bookings/${booking.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
       });
+      toast.success(`Booking ${newStatus === 'approved' ? 'approved ✓' : 'rejected ✗'}`);
+      fetchTrainerProfile();
+    } catch {
+      toast.error('Failed to update booking');
     }
-
-    toast.success(`Booking ${newStatus === 'approved' ? 'approved ✓' : 'rejected ✗'}`);
-    fetchTrainerProfile();
   };
 
   const addTimeSlot = async () => {
     if (!trainerProfile) return;
-    const { error } = await supabase.from('trainer_time_slots').insert({
-      trainer_id: trainerProfile.id,
-      day_of_week: newSlot.day,
-      start_time: newSlot.start,
-      end_time: newSlot.end,
-    });
-    if (error) toast.error('Failed to add slot');
-    else { toast.success('Time slot added!'); fetchTrainerProfile(); }
+    try {
+      await fetchApi('/trainers/time-slots', {
+        method: 'POST',
+        body: JSON.stringify({
+          dayOfWeek: newSlot.day,
+          startTime: newSlot.start,
+          endTime: newSlot.end,
+        }),
+      });
+      toast.success('Time slot added!');
+      fetchTrainerProfile();
+    } catch {
+      toast.error('Failed to add slot');
+    }
   };
 
   const removeTimeSlot = async (id: string) => {
-    await supabase.from('trainer_time_slots').delete().eq('id', id);
-    toast.success('Slot removed');
-    fetchTrainerProfile();
+    try {
+      await fetchApi(`/trainers/time-slots/${id}`, { method: 'DELETE' });
+      toast.success('Slot removed');
+      fetchTrainerProfile();
+    } catch {
+      toast.error('Failed to remove slot');
+    }
   };
 
   // Stats
@@ -203,7 +183,7 @@ export default function TrainerDashboard() {
   const approvedBookings = bookings.filter(b => b.status === 'approved' || b.status === 'active');
   const completedBookings = bookings.filter(b => b.status === 'completed');
   const totalEarnings = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-  const uniqueClients = new Set(bookings.map(b => b.user_id)).size;
+  const uniqueClients = new Set(bookings.map(b => b.userId)).size;
 
   const tabs = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3 },
@@ -365,7 +345,7 @@ export default function TrainerDashboard() {
                   <Button onClick={updateSessionPrice} disabled={updatingPrice} className="bg-yellow-500 text-black hover:bg-yellow-400 font-bold">
                     {updatingPrice ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Update Price'}
                   </Button>
-                  <span className="text-xs text-muted-foreground">Current: ₹{trainerProfile.price_per_session?.toLocaleString()}/session</span>
+                  <span className="text-xs text-muted-foreground">Current: ₹{trainerProfile.pricePerSession?.toLocaleString()}/session</span>
                 </div>
               </div>
             </div>
@@ -392,12 +372,12 @@ export default function TrainerDashboard() {
                     <div key={booking.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30">
                       <div>
                         <p className="font-medium text-foreground text-sm">
-                          {new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(booking.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </p>
-                        <p className="text-xs text-muted-foreground">{booking.start_time} • {booking.session_type}</p>
+                        <p className="text-xs text-muted-foreground">{booking.startTime} • {booking.sessionType}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-primary font-bold text-sm">₹{booking.payment_amount?.toLocaleString()}</p>
+                        <p className="text-primary font-bold text-sm">₹{booking.paymentAmount?.toLocaleString()}</p>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                           booking.status === 'pending' ? 'bg-yellow-400/10 text-yellow-400' :
                           booking.status === 'approved' ? 'bg-primary/10 text-primary' :
@@ -434,7 +414,7 @@ export default function TrainerDashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-semibold text-foreground">
-                            {new Date(booking.booking_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                            {new Date(booking.bookingDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
                           </p>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                             booking.status === 'pending' ? 'bg-yellow-400/15 text-yellow-400' :
@@ -443,11 +423,11 @@ export default function TrainerDashboard() {
                             'bg-secondary text-muted-foreground'
                           }`}>{booking.status}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{booking.start_time} • {booking.session_type}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">User ID: {booking.user_id.substring(0, 8)}...</p>
+                        <p className="text-xs text-muted-foreground">{booking.startTime} • {booking.sessionType}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">User name: {booking.user?.name || 'Client'}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="font-bold text-primary">₹{booking.payment_amount?.toLocaleString()}</p>
+                        <p className="font-bold text-primary">₹{booking.paymentAmount?.toLocaleString()}</p>
                         {booking.status === 'pending' && (
                           <div className="flex gap-2 mt-2">
                             <Button
@@ -506,8 +486,8 @@ export default function TrainerDashboard() {
                   {timeSlots.map(slot => (
                     <div key={slot.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30">
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-primary font-bold w-24">{DAYS[slot.day_of_week]}</span>
-                        <span className="text-sm text-foreground">{slot.start_time} – {slot.end_time}</span>
+                        <span className="text-xs text-primary font-bold w-24">{DAYS[slot.dayOfWeek]}</span>
+                        <span className="text-sm text-foreground">{slot.startTime} – {slot.endTime}</span>
                       </div>
                       <button onClick={() => removeTimeSlot(slot.id)} className="text-muted-foreground hover:text-destructive transition-colors">
                         <Trash2 className="h-4 w-4" />

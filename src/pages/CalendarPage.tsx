@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Dumbbell, Flame, Calendar as CalIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -21,16 +21,21 @@ export default function CalendarPage() {
   const fetchMonthData = async () => {
     const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString();
     const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
-    const { data } = await supabase.from('workout_logs').select('completed_at, calories_burned').eq('user_id', user!.id).gte('completed_at', start).lte('completed_at', end);
-    if (data) {
-      const grouped: Record<string, { count: number; calories: number }> = {};
-      data.forEach(d => {
-        const day = new Date(d.completed_at).getDate().toString();
-        if (!grouped[day]) grouped[day] = { count: 0, calories: 0 };
-        grouped[day].count++;
-        grouped[day].calories += d.calories_burned || 0;
-      });
-      setWorkoutDays(grouped);
+    
+    try {
+      const data = await fetchApi(`/workouts?start=${start}&end=${end}`);
+      if (data) {
+        const grouped: Record<string, { count: number; calories: number }> = {};
+        data.forEach((d: any) => {
+          const day = new Date(d.completedAt).getDate().toString();
+          if (!grouped[day]) grouped[day] = { count: 0, calories: 0 };
+          grouped[day].count++;
+          grouped[day].calories += d.caloriesBurned || 0;
+        });
+        setWorkoutDays(grouped);
+      }
+    } catch (err) {
+      console.error('Fetch workout month data error', err);
     }
   };
 

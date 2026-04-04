@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -40,40 +40,16 @@ export default function AdminDashboard() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [
-        { data: roles },
-        { data: profiles },
-        { data: trainers },
-        { data: bookings },
-        { data: payments },
-        { data: subscriptions },
-      ] = await Promise.all([
-        supabase.from('user_roles').select('user_id, role'),
-        supabase.from('profiles').select('user_id, name, created_at'),
-        supabase.from('trainer_profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('trainer_bookings').select('*').order('booking_date', { ascending: false }),
-        supabase.from('payments' as any).select('*').order('date', { ascending: false }),
-        supabase.from('subscriptions' as any).select('*').order('created_at', { ascending: false }),
-      ]);
+      const data = await fetchApi('/dashboard/admin');
 
-      // Merge users: join profiles + roles
-      const merged = (roles || []).map((row: any) => {
-        const profile = (profiles || []).find((p: any) => p.user_id === row.user_id);
-        return {
-          id: row.user_id,
-          name: profile?.name || 'Unknown',
-          role: row.role,
-          created_at: profile?.created_at || new Date().toISOString(),
-        };
-      });
-
-      setAllUsers(merged);
-      setAllTrainers(trainers || []);
-      setAllBookings(bookings || []);
-      setAllPayments((payments as any[]) || []);
-      setAllSubscriptions((subscriptions as any[]) || []);
+      setAllUsers(data.allUsers || []);
+      setAllTrainers(data.allTrainers || []);
+      setAllBookings(data.allBookings || []);
+      setAllPayments(data.allPayments || []);
+      setAllSubscriptions(data.allSubscriptions || []);
     } catch (err) {
       console.error('Admin fetch error:', err);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -81,18 +57,24 @@ export default function AdminDashboard() {
 
   const deleteUser = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
-    const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
-    if (error) { toast.error('Failed to delete user: ' + error.message); return; }
-    toast.success('User deleted');
-    fetchAll();
+    try {
+      await fetchApi(`/dashboard/admin/users/${userId}`, { method: 'DELETE' });
+      toast.success('User deleted');
+      fetchAll();
+    } catch (error: any) {
+      toast.error('Failed to delete user: ' + error.message);
+    }
   };
 
   const deleteTrainer = async (trainerId: string) => {
     if (!confirm('Are you sure you want to delete this trainer?')) return;
-    const { error } = await supabase.from('trainer_profiles').delete().eq('id', trainerId);
-    if (error) { toast.error('Failed to delete trainer: ' + error.message); return; }
-    toast.success('Trainer deleted');
-    fetchAll();
+    try {
+      await fetchApi(`/dashboard/admin/trainers/${trainerId}`, { method: 'DELETE' });
+      toast.success('Trainer deleted');
+      fetchAll();
+    } catch (error: any) {
+      toast.error('Failed to delete trainer: ' + error.message);
+    }
   };
 
   const setTab = (tab: typeof activeTab) => {
@@ -255,7 +237,7 @@ export default function AdminDashboard() {
                       <div>
                         <p className="font-semibold text-foreground">{u.name}</p>
                         <p className="text-xs text-muted-foreground">ID: {u.id.substring(0, 12)}...</p>
-                        <p className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString('en-IN')}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(u.createdAt).toLocaleDateString('en-IN')}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -297,12 +279,12 @@ export default function AdminDashboard() {
                       <div>
                         <p className="font-semibold text-foreground">{trainer.name}</p>
                         <p className="text-xs text-muted-foreground">{trainer.specialty}</p>
-                        <p className="text-xs text-yellow-400">₹{trainer.price_per_session?.toLocaleString()}/session</p>
+                        <p className="text-xs text-yellow-400">₹{trainer.pricePerSession?.toLocaleString()}/session</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${trainer.is_active ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'}`}>
-                        {trainer.is_active ? 'Active' : 'Inactive'}
+                      <span className={`text-xs px-2 py-1 rounded-full ${trainer.isActive ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                        {trainer.isActive ? 'Active' : 'Inactive'}
                       </span>
                       <Button
                         size="sm"
@@ -347,12 +329,12 @@ export default function AdminDashboard() {
                   {allBookings.slice(0, 50).map((booking: any) => (
                     <div key={booking.id} className="p-3 rounded-xl bg-secondary/30 flex justify-between items-start gap-4">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">User: {booking.user_id.substring(0, 12)}...</p>
-                        <p className="text-xs text-muted-foreground">Trainer: {booking.trainer_id?.substring(0, 12)}...</p>
-                        <p className="text-xs text-muted-foreground">{booking.booking_date} · {booking.start_time} · {booking.session_type}</p>
+                        <p className="text-sm font-medium text-foreground truncate">User: {booking.userId.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">Trainer: {booking.trainerId?.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">{booking.bookingDate} · {booking.startTime} · {booking.sessionType}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="font-bold text-primary">₹{booking.payment_amount?.toLocaleString()}</p>
+                        <p className="font-bold text-primary">₹{booking.paymentAmount?.toLocaleString()}</p>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                           booking.status === 'pending' ? 'bg-yellow-400/10 text-yellow-400' :
                           booking.status === 'approved' ? 'bg-primary/10 text-primary' :
@@ -397,7 +379,7 @@ export default function AdminDashboard() {
                     <div key={payment.id} className="p-3 rounded-xl bg-secondary/30 flex justify-between items-center">
                       <div>
                         <p className="text-sm font-medium text-foreground capitalize">{payment.type}</p>
-                        <p className="text-xs text-muted-foreground">User: {payment.user_id?.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">User: {payment.userId?.substring(0, 12)}...</p>
                         <p className="text-xs text-muted-foreground">{new Date(payment.date).toLocaleDateString('en-IN')}</p>
                       </div>
                       <div className="text-right">
@@ -439,8 +421,8 @@ export default function AdminDashboard() {
                     <div key={sub.id} className="p-3 rounded-xl bg-secondary/30 flex justify-between items-center">
                       <div>
                         <p className="text-sm font-medium text-foreground">{sub.plan} Plan</p>
-                        <p className="text-xs text-muted-foreground">User: {sub.user_id?.substring(0, 12)}...</p>
-                        <p className="text-xs text-muted-foreground">{new Date(sub.created_at).toLocaleDateString('en-IN')}</p>
+                        <p className="text-xs text-muted-foreground">User: {sub.userId?.substring(0, 12)}...</p>
+                        <p className="text-xs text-muted-foreground">{new Date(sub.createdAt).toLocaleDateString('en-IN')}</p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-purple-400">₹{sub.price?.toLocaleString()}</p>

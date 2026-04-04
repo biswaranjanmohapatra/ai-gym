@@ -5,7 +5,6 @@ import { Dumbbell, Mail, Lock, ArrowRight, Loader2, User, Eye, EyeOff, Award } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function TrainerAuthPage() {
@@ -18,7 +17,7 @@ export default function TrainerAuthPage() {
   const [experience, setExperience] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, signOut, user } = useAuth();
   const navigate = useNavigate();
 
   if (user) {
@@ -39,30 +38,15 @@ export default function TrainerAuthPage() {
         const resolvedRole = await signIn(email, password);
         if (resolvedRole !== 'trainer') {
           toast.error('This account is not registered as a trainer.');
-          await supabase.auth.signOut();
+          await signOut();
           return;
         }
         toast.success('Welcome back, Coach!');
         navigate('/trainer-dashboard');
       } else {
-        const userId = await signUp(email, password, 'trainer', name.trim());
-        if (userId) {
-          // Auto-create trainer_profile (user_id set, will be confirmed after email verify)
-          await supabase.from('trainer_profiles').insert({
-            user_id: userId,
-            name: name.trim(),
-            specialty: specialty.trim() || 'Fitness Coach',
-            experience: experience || '1-3 years',
-            price_per_session: 500,
-            is_active: true,
-            bio: `${name.trim()} — Professional fitness trainer.`,
-            certifications: [],
-            specializations: [],
-            availability: [],
-            emoji: '💪',
-          } as any);
-        }
-        toast.success('Account created! Please verify your email to access your trainer dashboard.');
+        await signUp(email, password, 'trainer', name.trim());
+        toast.success('Trainer account created successfully! You can now log in.');
+        setIsLogin(true);
       }
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong');

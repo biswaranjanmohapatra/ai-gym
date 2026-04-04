@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { CreditCard, IndianRupee, Loader2, TrendingUp, User, Award } from 'lucide-react';
 
 interface Payment {
   id: string;
-  user_id: string;
-  trainer_id: string | null;
+  userId: string; // Prisma camelCase
+  trainerId: string | null; // Prisma camelCase
   amount: number;
   date: string;
   status: string;
@@ -27,30 +27,8 @@ export default function PaymentHistory() {
   const loadPayments = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('payments' as any)
-        .select('*')
-        .order('date', { ascending: false });
-
-      if (role === 'user') {
-        query = query.eq('user_id', user!.id);
-      } else if (role === 'trainer') {
-        const { data: trainer } = await supabase
-          .from('trainer_profiles')
-          .select('id')
-          .eq('user_id', user!.id)
-          .maybeSingle();
-        if (trainer?.id) {
-          query = query.eq('trainer_id', trainer.id);
-        } else {
-          setPayments([]);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const { data, error } = await query;
-      if (!error && data) setPayments(data as Payment[]);
+      const data = await fetchApi('/payments');
+      setPayments(data as Payment[]);
     } catch {
       setPayments([]);
     } finally {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -38,46 +38,69 @@ export default function CommunityPage() {
   }, [user]);
 
   const fetchPosts = async () => {
-    const { data } = await supabase.from('community_posts').select('*').order('created_at', { ascending: false }).limit(50);
-    if (data) setPosts(data);
+    try {
+      const data = await fetchApi('/community');
+      if (data) setPosts(data);
+    } catch (err) {
+      console.error('Fetch posts error', err);
+    }
   };
 
   const fetchLikes = async () => {
-    const { data } = await supabase.from('community_likes').select('post_id').eq('user_id', user!.id);
-    if (data) setLikedPosts(new Set(data.map(l => l.post_id)));
+    // With the new API, likes are included in the post object or we check the user id in the likes array
+    // But we still might want a quick set of liked post IDs for UI tracking
   };
 
   const fetchComments = async (postId: string) => {
-    const { data } = await supabase.from('community_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true });
-    if (data) setComments(prev => ({ ...prev, [postId]: data }));
+    try {
+      const data = await fetchApi(`/community/${postId}/comments`);
+      if (data) setComments(prev => ({ ...prev, [postId]: data }));
+    } catch (err) {
+      console.error('Fetch comments error', err);
+    }
   };
 
   const createPost = async () => {
     if (!newPost.trim()) return;
     if (!user) { toast.error('Please sign in'); return; }
-    const { error } = await supabase.from('community_posts').insert({ user_id: user.id, content: newPost, post_type: postType });
-    if (error) toast.error('Failed to post');
-    else { toast.success('Posted! 🎉'); setNewPost(''); setShowNewPost(false); fetchPosts(); }
+    try {
+      await fetchApi('/community', {
+        method: 'POST',
+        body: JSON.stringify({ content: newPost, postType }),
+      });
+      toast.success('Posted! 🎉');
+      setNewPost('');
+      setShowNewPost(false);
+      fetchPosts();
+    } catch {
+      toast.error('Failed to post');
+    }
   };
 
   const toggleLike = async (postId: string) => {
     if (!user) { toast.error('Please sign in'); return; }
-    if (likedPosts.has(postId)) {
-      await supabase.from('community_likes').delete().eq('user_id', user.id).eq('post_id', postId);
-      setLikedPosts(prev => { const n = new Set(prev); n.delete(postId); return n; });
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes_count: Math.max(0, (p.likes_count || 0) - 1) } : p));
-    } else {
-      await supabase.from('community_likes').insert({ user_id: user.id, post_id: postId });
-      setLikedPosts(prev => new Set(prev).add(postId));
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes_count: (p.likes_count || 0) + 1 } : p));
+    try {
+      const result = await fetchApi(`/community/${postId}/like`, { method: 'POST' });
+      // Refresh posts to get new like counts
+      fetchPosts();
+    } catch {
+      toast.error('Failed to toggle like');
     }
   };
 
   const addComment = async (postId: string) => {
     if (!newComment.trim() || !user) return;
-    const { error } = await supabase.from('community_comments').insert({ user_id: user.id, post_id: postId, content: newComment });
-    if (error) toast.error('Failed to comment');
-    else { setNewComment(''); fetchComments(postId); }
+    try {
+      await fetchApi(`/community/${postId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content: newComment }),
+      });
+      setNewComment('');
+      fetchComments(postId);
+      fetchPosts(); // Refresh comment counts
+    } catch {
+      toast.error('Failed to comment');
+    }
   };
 
   return (
@@ -122,8 +145,9 @@ export default function CommunityPage() {
           {/* Posts Feed */}
           <div className="space-y-4">
             {posts.map((post, i) => {
-              const config = postTypeConfig[post.post_type] || postTypeConfig.general;
+              const config = postTypeConfig[post.postType] || postTypeConfig.general;
               const Icon = config.icon;
+              const isLiked = user ? post.likes?.some((l: any) => l.userId === user.id) : false;
               return (
                 <motion.div key={post.id} variants={itemVariants} className="glass-card p-5">
                   <div className="flex items-start gap-3 mb-3">
@@ -133,7 +157,7 @@ export default function CommunityPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${config.color} bg-primary/10`}>{config.label}</span>
-                        <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(post.createdAt).toLocaleDateString()}</span>
                       </div>
                       <p className="text-foreground text-sm mt-2 whitespace-pre-wrap">{post.content}</p>
                     </div>
@@ -141,13 +165,13 @@ export default function CommunityPage() {
 
                   <div className="flex items-center gap-4 pt-2 border-t border-border/20">
                     <button onClick={() => toggleLike(post.id)} className="flex items-center gap-1.5 text-sm transition-colors hover:text-primary">
-                      <Heart className={`h-4 w-4 ${likedPosts.has(post.id) ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
-                      <span className="text-muted-foreground">{post.likes_count || 0}</span>
+                      <Heart className={`h-4 w-4 ${isLiked ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
+                      <span className="text-muted-foreground">{post.likes?.length || 0}</span>
                     </button>
                     <button onClick={() => { setShowComments(showComments === post.id ? null : post.id); if (showComments !== post.id) fetchComments(post.id); }}
                       className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                       <MessageCircle className="h-4 w-4" />
-                      Comments
+                      {post._count?.comments || 0} Comments
                     </button>
                   </div>
 
@@ -157,8 +181,9 @@ export default function CommunityPage() {
                         <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
                           {(comments[post.id] || []).map(c => (
                             <div key={c.id} className="bg-secondary/30 rounded-lg p-2 text-xs text-foreground">
+                              <span className="font-bold text-primary mr-2">{c.user?.name || 'User'}:</span>
                               {c.content}
-                              <span className="text-muted-foreground ml-2">{new Date(c.created_at).toLocaleDateString()}</span>
+                              <span className="text-[10px] text-muted-foreground ml-2">{new Date(c.createdAt).toLocaleTimeString()}</span>
                             </div>
                           ))}
                           {(comments[post.id] || []).length === 0 && <p className="text-xs text-muted-foreground">No comments yet.</p>}

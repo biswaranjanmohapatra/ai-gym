@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -32,22 +32,32 @@ export default function RewardsPage() {
   }, [user]);
 
   const fetchPoints = async () => {
-    const { data } = await supabase.from('reward_points').select('*').eq('user_id', user!.id).order('earned_at', { ascending: false });
-    if (data) {
-      setPointsHistory(data);
-      setTotalPoints(data.reduce((sum, p) => sum + p.points, 0));
+    try {
+      const data = await fetchApi('/rewards');
+      if (data) {
+        setPointsHistory(data);
+        setTotalPoints(data.reduce((sum: number, p: any) => sum + p.points, 0));
+      }
+    } catch (err) {
+      console.error('Fetch points error', err);
     }
   };
 
   const redeemReward = async (reward: typeof rewardItems[0]) => {
     if (totalPoints < reward.cost) { toast.error('Not enough points!'); return; }
-    const { error } = await supabase.from('reward_points').insert({
-      user_id: user!.id,
-      points: -reward.cost,
-      reason: `Redeemed: ${reward.name}`,
-    });
-    if (error) toast.error('Failed to redeem');
-    else { toast.success(`🎉 ${reward.name} redeemed!`); fetchPoints(); }
+    try {
+      await fetchApi('/rewards', {
+        method: 'POST',
+        body: JSON.stringify({
+          points: -reward.cost,
+          description: `Redeemed: ${reward.name}`,
+        }),
+      });
+      toast.success(`🎉 ${reward.name} redeemed!`);
+      fetchPoints();
+    } catch {
+      toast.error('Failed to redeem');
+    }
   };
 
   if (!user) {
@@ -126,8 +136,8 @@ export default function RewardsPage() {
               {pointsHistory.map(p => (
                 <div key={p.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30">
                   <div>
-                    <p className="text-sm text-foreground">{p.reason}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(p.earned_at).toLocaleDateString()}</p>
+                    <p className="text-sm text-foreground">{p.description}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(p.earnedAt).toLocaleDateString()}</p>
                   </div>
                   <span className={`font-medium text-sm ${p.points > 0 ? 'text-primary' : 'text-destructive'}`}>
                     {p.points > 0 ? '+' : ''}{p.points}

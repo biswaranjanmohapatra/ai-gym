@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import MealLogger from '@/components/diet/MealLogger';
 import WaterTracker from '@/components/diet/WaterTracker';
 import NutritionSummary from '@/components/diet/NutritionSummary';
@@ -29,28 +29,30 @@ export default function DietPage() {
   }, [user]);
 
   const fetchMealLogs = async () => {
-    const { data } = await supabase
-      .from('meal_logs')
-      .select('*')
-      .eq('user_id', user!.id)
-      .order('logged_at', { ascending: false })
-      .limit(100);
-    if (data) setMealLogs(data);
+    try {
+      const data = await fetchApi('/diet/meals');
+      if (data) setMealLogs(data);
+    } catch (err) {
+      console.error('Fetch meals error', err);
+    }
   };
 
   const fetchWaterLogs = async () => {
-    const { data } = await supabase
-      .from('water_logs')
-      .select('*')
-      .eq('user_id', user!.id)
-      .order('logged_at', { ascending: false })
-      .limit(50);
-    if (data) setWaterLogs(data);
+    try {
+      const data = await fetchApi('/diet/water');
+      if (data) setWaterLogs(data);
+    } catch (err) {
+      console.error('Fetch water error', err);
+    }
   };
 
   const fetchProfile = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('user_id', user!.id).single();
-    if (data) setProfile(data);
+    try {
+      const data = await fetchApi('/users/profile');
+      if (data) setProfile(data);
+    } catch (err) {
+      console.error('Fetch profile error', err);
+    }
   };
 
   if (authLoading) {

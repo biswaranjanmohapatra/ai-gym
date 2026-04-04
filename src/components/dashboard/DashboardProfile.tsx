@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { User, Crown, Shield, Edit3, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -11,12 +11,12 @@ interface Profile {
   name: string | null;
   age: number | null;
   gender: string | null;
-  height_cm: number | null;
-  weight_kg: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
   goal: string | null;
   bmi: number | null;
-  activity_level: string | null;
-  premium_until?: string | null;
+  activityLevel: string | null;
+  premiumUntil?: string | null;
 }
 
 interface Props {
@@ -32,30 +32,38 @@ export default function DashboardProfile({ profile, onUpdate, isPremium = false 
     name: profile?.name || '',
     age: String(profile?.age || ''),
     gender: profile?.gender || 'male',
-    height_cm: String(profile?.height_cm || ''),
-    weight_kg: String(profile?.weight_kg || ''),
+    heightCm: String(profile?.heightCm || ''),
+    weightKg: String(profile?.weightKg || ''),
     goal: profile?.goal || 'general_fitness',
-    activity_level: profile?.activity_level || 'moderate',
+    activityLevel: profile?.activityLevel || 'moderate',
   });
 
   const avatar = typeof window !== 'undefined' ? localStorage.getItem(`avatar_${user?.id}`) || '💪' : '💪';
 
   const saveProfile = async () => {
-    const height = parseFloat(formData.height_cm);
-    const weight = parseFloat(formData.weight_kg);
+    const height = parseFloat(formData.heightCm);
+    const weight = parseFloat(formData.weightKg);
     const bmi = height && weight ? +(weight / ((height / 100) ** 2)).toFixed(1) : null;
-    const { error } = await supabase.from('profiles').update({
-      name: formData.name || null,
-      age: formData.age ? parseInt(formData.age) : null,
-      gender: formData.gender,
-      height_cm: height || null,
-      weight_kg: weight || null,
-      goal: formData.goal,
-      activity_level: formData.activity_level,
-      bmi,
-    }).eq('user_id', user!.id);
-    if (error) toast.error('Failed to save profile');
-    else { toast.success('Profile updated!'); setEditMode(false); onUpdate(); }
+    try {
+      await fetchApi('/users/profile', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: formData.name || null,
+          age: formData.age ? parseInt(formData.age) : null,
+          gender: formData.gender,
+          heightCm: height || null,
+          weightKg: weight || null,
+          goal: formData.goal,
+          activityLevel: formData.activityLevel,
+          bmi,
+        }),
+      });
+      toast.success('Profile updated!');
+      setEditMode(false);
+      onUpdate();
+    } catch {
+      toast.error('Failed to save profile');
+    }
   };
 
   return (
@@ -152,14 +160,14 @@ export default function DashboardProfile({ profile, onUpdate, isPremium = false 
             <select value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="w-full rounded-lg bg-secondary border border-border/50 px-3 py-2 text-sm text-foreground">
               <option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
             </select>
-            <Input placeholder="Height (cm)" type="number" value={formData.height_cm} onChange={e => setFormData({ ...formData, height_cm: e.target.value })} className="bg-secondary border-border/50" />
-            <Input placeholder="Weight (kg)" type="number" value={formData.weight_kg} onChange={e => setFormData({ ...formData, weight_kg: e.target.value })} className="bg-secondary border-border/50" />
+            <Input placeholder="Height (cm)" type="number" value={formData.heightCm} onChange={e => setFormData({ ...formData, heightCm: e.target.value })} className="bg-secondary border-border/50" />
+            <Input placeholder="Weight (kg)" type="number" value={formData.weightKg} onChange={e => setFormData({ ...formData, weightKg: e.target.value })} className="bg-secondary border-border/50" />
             <select value={formData.goal} onChange={e => setFormData({ ...formData, goal: e.target.value })} className="w-full rounded-lg bg-secondary border border-border/50 px-3 py-2 text-sm text-foreground">
               <option value="weight_loss">Weight Loss</option><option value="muscle_gain">Muscle Gain</option>
               <option value="endurance">Endurance</option><option value="flexibility">Flexibility</option>
               <option value="general_fitness">General Fitness</option>
             </select>
-            <select value={formData.activity_level} onChange={e => setFormData({ ...formData, activity_level: e.target.value })} className="w-full rounded-lg bg-secondary border border-border/50 px-3 py-2 text-sm text-foreground">
+            <select value={formData.activityLevel} onChange={e => setFormData({ ...formData, activityLevel: e.target.value })} className="w-full rounded-lg bg-secondary border border-border/50 px-3 py-2 text-sm text-foreground">
               <option value="sedentary">Sedentary</option><option value="light">Light</option>
               <option value="moderate">Moderate</option><option value="active">Active</option>
               <option value="very_active">Very Active</option>
@@ -173,11 +181,11 @@ export default function DashboardProfile({ profile, onUpdate, isPremium = false 
             {[
               { label: 'Age', value: profile?.age || '—' },
               { label: 'Gender', value: profile?.gender || '—' },
-              { label: 'Height', value: profile?.height_cm ? `${profile.height_cm} cm` : '—' },
-              { label: 'Weight', value: profile?.weight_kg ? `${profile.weight_kg} kg` : '—' },
+              { label: 'Height', value: profile?.heightCm ? `${profile.heightCm} cm` : '—' },
+              { label: 'Weight', value: profile?.weightKg ? `${profile.weightKg} kg` : '—' },
               { label: 'BMI', value: profile?.bmi ?? '—' },
               { label: 'Goal', value: profile?.goal?.replace(/_/g, ' ') || '—' },
-              { label: 'Activity', value: profile?.activity_level?.replace(/_/g, ' ') || '—' },
+              { label: 'Activity', value: profile?.activityLevel?.replace(/_/g, ' ') || '—' },
             ].map((item, i) => (
               <div key={i} className="flex justify-between py-1 px-1">
                 <span className="text-muted-foreground">{item.label}</span>
