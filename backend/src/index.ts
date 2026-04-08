@@ -5,6 +5,8 @@ import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
+import { checkDbConnection } from './lib/prisma';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -51,8 +53,15 @@ import communityRoutes from './routes/community';
 import rewardRoutes from './routes/rewards';
 import workoutRoutes from './routes/workouts';
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'API is running', timestamp: new Date().toISOString() });
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  const dbStatus = await checkDbConnection();
+  res.json({ 
+    status: dbStatus.status === 'connected' ? 'ok' : 'error',
+    message: 'API is running',
+    database: dbStatus,
+    timestamp: new Date().toISOString() 
+  });
 });
 
 app.use('/api/auth', authRoutes);
