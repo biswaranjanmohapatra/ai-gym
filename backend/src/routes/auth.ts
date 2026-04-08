@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkeythatshouldbechang
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name, role } = req.body;
-    
+
     if (!email || !password || !name) {
       res.status(400).json({ error: 'Email, password, and name are required' });
       return;
@@ -63,8 +63,11 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       user: { id: user.id, email: user.email, name: user.name, role: user.role }
     });
   } catch (error: any) {
-    console.error('Registration error', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Registration error details:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 });
 
@@ -96,9 +99,12 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       token,
       user: { id: user.id, email: user.email, name: user.name, role: user.role }
     });
-  } catch (error) {
-    console.error('Login error', error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    console.error('Login error details:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 });
 

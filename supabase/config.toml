@@ -1,7 +1,0 @@
-project_id = "bnxrtdptkemjfzlhbwku"
-
-[functions.ai-fitness-chat]
-verify_jwt = false
-
-[functions.ai-diet-plan]
-verify_jwt = false

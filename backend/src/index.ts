@@ -10,22 +10,29 @@ const PORT = process.env.PORT || 5000;
 
 const allowedOrigins = [
   'http://localhost:8080',
+  'http://127.0.0.1:8080',
   'https://ai-gym-six.vercel.app',
-  // Add any other Vercel preview URLs if needed
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin === 'null') {
       return callback(null, true);
     }
+    console.warn(`CORS blocked request from origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 import authRoutes from './routes/auth';
 import trainerRoutes from './routes/trainers';
@@ -56,6 +63,12 @@ app.use('/api/diet', dietRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/workouts', workoutRoutes);
+
+// Catch-all for undefined routes
+app.use((req, res) => {
+  console.warn(`Route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: 'Route not found' });
+});
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

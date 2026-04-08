@@ -1,0 +1,2 @@
+﻿Γùç injecting env (0) from .env // tip: Γîü auth for agents [www.vestauth.com]
+Server running on http://localhost:5000
