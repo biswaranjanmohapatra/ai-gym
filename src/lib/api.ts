@@ -13,8 +13,8 @@ const getApiUrl = () => {
     return `${protocol}//${hostname}:5000/api`;
   }
   
-  // Default fallback for production or other environments
-  return '/api';
+  // Default fallback for production (Vercel)
+  return '/_/backend/api';
 };
 
 const API_URL = getApiUrl();
