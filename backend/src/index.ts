@@ -8,17 +8,21 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const allowedOrigins = [
-  'http://localhost:8080',
-  'http://127.0.0.1:8080',
-  'https://ai-gym-six.vercel.app',
-];
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin === 'null') {
+    // In development or local testing, allow everything
+    if (!origin || process.env.NODE_ENV !== 'production' || origin.includes('localhost') || origin.includes('127.0.0.1')) {
       return callback(null, true);
     }
+    
+    const allowedOrigins = [
+      'https://ai-gym-six.vercel.app',
+    ];
+
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    
     console.warn(`CORS blocked request from origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },

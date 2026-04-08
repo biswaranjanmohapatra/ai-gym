@@ -1,10 +1,20 @@
 // Local/Environment backend API utility
 const getApiUrl = () => {
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:5000/api';
+  const { hostname, protocol, port } = window.location;
+  
+  // If we are on a local-like hostname (localhost, 127.0.0.1, or typical LAN IPs)
+  const isLocal = hostname === 'localhost' || 
+                  hostname === '127.0.0.1' || 
+                  hostname.startsWith('192.168.') || 
+                  hostname.startsWith('10.') || 
+                  hostname.startsWith('172.');
+                  
+  if (isLocal && port === '8080') {
+    return `${protocol}//${hostname}:5000/api`;
   }
-  return '/_/backend/api';
+  
+  // Default fallback for production or other environments
+  return '/api';
 };
 
 const API_URL = getApiUrl();
