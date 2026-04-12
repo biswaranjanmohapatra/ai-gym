@@ -9,7 +9,7 @@ datasource db {
 }
 
 model User {
-  id               String            @id @default(uuid()) 
+  id               String            @id @default(cuid()) 
   email            String            @unique
   password         String
   name             String            @default("")
@@ -32,7 +32,7 @@ model User {
 }
 
 model Profile {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   userId           String   @unique
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name             String?
@@ -48,7 +48,7 @@ model Profile {
 }
 
 model WorkoutLog {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   workoutName      String
@@ -59,7 +59,7 @@ model WorkoutLog {
 }
 
 model MealLog {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   mealName         String
@@ -72,7 +72,7 @@ model MealLog {
 }
 
 model WaterLog {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amountMl         Int
@@ -80,7 +80,7 @@ model WaterLog {
 }
 
 model CommunityPost {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   content          String
@@ -92,7 +92,7 @@ model CommunityPost {
 }
 
 model CommunityLike {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   postId           String
   post             CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId           String
@@ -103,7 +103,7 @@ model CommunityLike {
 }
 
 model CommunityComment {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   postId           String
   post             CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId           String
@@ -113,7 +113,7 @@ model CommunityComment {
 }
 
 model RewardPoint {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   points           Int
@@ -122,7 +122,7 @@ model RewardPoint {
 }
 
 model TrainerProfile {
-  id               String   @id @default(uuid()) 
+  id               String   @id @default(cuid()) 
   userId           String?  @unique
   user             User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   name             String
@@ -145,7 +145,7 @@ model TrainerProfile {
 }
 
 model TrainerTimeSlot {
-  id           String         @id @default(uuid()) 
+  id           String         @id @default(cuid()) 
   trainerId    String
   trainer      TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
   dayOfWeek    Int // 0-6
@@ -155,7 +155,7 @@ model TrainerTimeSlot {
 }
 
 model TrainerBooking {
-  id             String         @id @default(uuid()) 
+  id             String         @id @default(cuid()) 
   userId         String
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   trainerId      String
@@ -171,7 +171,7 @@ model TrainerBooking {
 }
 
 model Payment {
-  id         String          @id @default(uuid()) 
+  id         String          @id @default(cuid()) 
   userId     String
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   trainerId  String?
@@ -183,7 +183,7 @@ model Payment {
 }
 
 model Subscription {
-  id        String   @id @default(uuid()) 
+  id        String   @id @default(cuid()) 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan      String

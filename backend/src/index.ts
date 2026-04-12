@@ -18,6 +18,7 @@ app.use(cors({
     }
     
     const allowedOrigins = [
+      'https://ai-gym-omega.vercel.app',
       'https://ai-gym-six.vercel.app',
     ];
 
