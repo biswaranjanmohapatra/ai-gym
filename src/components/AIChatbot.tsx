@@ -39,11 +39,14 @@ export default function AIChatbot({ onClose, profile }: AIChatbotProps) {
     const allMessages = [...messages, userMsg];
 
     try {
+      const { data: { session } } = await import('@/lib/supabase').then(m => m.supabase.auth.getSession());
+      const token = session?.access_token;
+      
       const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ messages: allMessages, profileContext }),
       });

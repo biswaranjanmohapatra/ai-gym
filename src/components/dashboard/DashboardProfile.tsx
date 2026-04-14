@@ -37,8 +37,7 @@ export default function DashboardProfile({ profile, onUpdate, isPremium = false 
     goal: profile?.goal || 'general_fitness',
     activityLevel: profile?.activityLevel || 'moderate',
   });
-
-  const avatar = typeof window !== 'undefined' ? localStorage.getItem(`avatar_${user?.id}`) || '💪' : '💪';
+  const avatar = '💪';
 
   const saveProfile = async () => {
     const height = parseFloat(formData.heightCm);

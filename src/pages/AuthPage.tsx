@@ -44,7 +44,6 @@ export default function AuthPage() {
         else navigate('/dashboard');
       } else {
         await signUp(email, password, 'user', name.trim() || undefined);
-        localStorage.setItem(`avatar_pending_${email}`, selectedAvatar);
         toast.success('Account created! Please verify your email before logging in.');
       }
     } catch (err: any) {

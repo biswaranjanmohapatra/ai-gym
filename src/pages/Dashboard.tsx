@@ -57,7 +57,7 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [showChat, setShowChat] = useState(false);
-  const isPremium = typeof window !== 'undefined' && user ? localStorage.getItem(`premium_${user.id}`) === 'true' : false;
+  const isPremium = profile?.premiumUntil ? new Date(profile.premiumUntil) > new Date() : false;
 
   useEffect(() => {
     if (user) { fetchProfile(); fetchWorkoutLogs(); }

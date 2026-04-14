@@ -28,8 +28,6 @@ export default function ProfileDropdown() {
           })
           .catch(err => console.error('Error fetching profile in dropdown', err));
       }
-      const saved = localStorage.getItem(`avatar_${user.id}`);
-      if (saved) setAvatar(saved);
     }
   }, [user]);
 

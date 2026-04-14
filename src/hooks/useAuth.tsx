@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { fetchApi } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 type AppRole = 'user' | 'trainer' | 'admin';
 
@@ -25,61 +25,102 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is already logged in via localStorage
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (token && storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser({ id: parsedUser.id, email: parsedUser.email, name: parsedUser.name });
-        setRole(parsedUser.role as AppRole);
-      } catch (e) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+  const fetchProfileRole = async (userId: string): Promise<AppRole> => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.warn('Could not fetch role from profiles:', error.message);
+        return 'user';
       }
+      return (data?.role as AppRole) || 'user';
+    } catch (e) {
+      console.error('Error fetching role:', e);
+      return 'user';
     }
-    setLoading(false);
+  };
+
+  useEffect(() => {
+    // Check active session on load
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const u = session.user;
+        setUser({ id: u.id, email: u.email || null, name: u.user_metadata?.name });
+        const userRole = await fetchProfileRole(u.id);
+        setRole(userRole);
+      } else {
+        setUser(null);
+        setRole(null);
+      }
+      setLoading(false);
+    });
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const u = session.user;
+        setUser({ id: u.id, email: u.email || null, name: u.user_metadata?.name });
+        const userRole = await fetchProfileRole(u.id);
+        setRole(userRole);
+      } else {
+        setUser(null);
+        setRole(null);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, roleToAssign: AppRole, name?: string) => {
-    try {
-      const response = await fetchApi('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ email, password, role: roleToAssign, name }),
-      });
-      // Do not auto auto-login
-      return response.user.id;
-    } catch (error: any) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          role: roleToAssign,
+          name: name
+        }
+      }
+    });
+
+    if (error) {
       throw new Error(error.message || 'Registration failed');
     }
+    
+    return data.user?.id || null;
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const response = await fetchApi('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-
-      setUser({ id: response.user.id, email: response.user.email, name: response.user.name });
-      setRole(response.user.role as AppRole);
-
-      return response.user.role as AppRole;
-    } catch (error: any) {
+    if (error) {
       throw new Error(error.message || 'Login failed');
     }
+    
+    // Some setups require email_confirmed_at. If needed:
+    // if (!data.user.email_confirmed_at) throw new Error('Please confirm your email first.');
+
+    const u = data.user;
+    setUser({ id: u.id, email: u.email || null, name: u.user_metadata?.name });
+    
+    const userRole = await fetchProfileRole(u.id);
+    setRole(userRole);
+
+    return userRole;
   };
 
   const signOut = async () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    setRole(null);
+    await supabase.auth.signOut();
   };
 
   return (
@@ -94,4 +135,3 @@ export function useAuth() {
   if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
-

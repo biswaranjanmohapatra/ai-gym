@@ -1,4 +1,5 @@
-// Local/Environment backend API utility
+import { supabase } from './supabase';
+
 const getApiUrl = () => {
   const { hostname, protocol, port } = window.location;
   
@@ -20,7 +21,8 @@ const getApiUrl = () => {
 const API_URL = getApiUrl();
 
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem('token');
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
